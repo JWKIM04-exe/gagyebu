@@ -523,15 +523,11 @@ const RKEY='gagyebu.rows.v1',ROWS_DEF={e:['식비','교통','저축'],i:['급여
 let rowCats=JSON.parse(JSON.stringify(ROWS_DEF));
 try{const v=JSON.parse(localStorage.getItem(RKEY));if(v&&Array.isArray(v.e)&&Array.isArray(v.i))rowCats=v}catch(e){}
 const saveRows=()=>{try{localStorage.setItem(RKEY,JSON.stringify(rowCats))}catch(e){}};
-function rowOpts(t,sel){
-  const base=[...new Set([...CATS[t].filter(c=>c!=='기타'),...(rowCats[t]||[]),...data.filter(x=>x.t===t&&x.c&&x.c!=='기타'&&!CATS[t].includes(x.c)).map(x=>x.c)])];
-  return base.map(c=>`<option${c===sel?' selected':''}>${esc(c)}</option>`).join('')+`<option value="기타"${sel==='기타'?' selected':''}>기타 ✎</option>`;
-}
+function rowOpts(t,sel){return CATS[t].map(c=>`<option${c===sel?' selected':''}>${esc(c)}</option>`).join('')}
 function renderRows(){
-  rowsType=type;const defs=[...(rowCats[type]||[]).slice(0,3),'기타'];
-  $('mRows').innerHTML=defs.map((c,i)=>`<div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,c)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"><input id="mN${i}" class="mcname mcn" type="text" maxlength="12" placeholder="카테고리 이름 직접 적기 (예: 경조사)" aria-label="${i+1}번 칸 카테고리 직접 입력"${c==='기타'?'':' hidden'}></div>`).join('');
+  rowsType=type;const first=CATS[type][0];
+  $('mRows').innerHTML=[0,1,2,3].map(i=>`<div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,first)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"></div>`).join('');
   $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
-  $('mRows').querySelectorAll('.mcsel').forEach((el,i)=>el.addEventListener('change',()=>{const o=el.value==='기타';$('mN'+i).hidden=!o;if(o)$('mN'+i).focus();else $('mN'+i).value=''}));
   mSum();
 }
 function amtMode(){
@@ -542,7 +538,7 @@ function amtMode(){
 }
 function mSum(){const t=[...document.querySelectorAll('.mamt')].reduce((s,el)=>s+(money(el.id)||0),0);$('mSum').textContent=t?`합계 ${won(t)}`:''}
 function multiSubmit(){
-  const rows=[...document.querySelectorAll('.mamt')].map((el,i)=>{const sv=$('mC'+i).value;return {c:sv==='기타'?($('mN'+i).value.trim()||'기타'):sv,a:money(el.id)}}).filter(r=>r.a>0);
+  const rows=[...document.querySelectorAll('.mamt')].map((el,i)=>({c:$('mC'+i).value,a:money(el.id)})).filter(r=>r.a>0);
   if(!rows.length){$('fErr').textContent='금액을 한 칸 이상 적어 주세요.';return}
   $('fErr').textContent='';
   const tp=type,ac=Number($('fAcc').value)||0,m=$('fMemo').value.trim(),d=$('fDate').value,now=Date.now();let r=null;
