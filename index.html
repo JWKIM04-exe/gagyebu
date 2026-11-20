@@ -182,7 +182,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .xbg-b.on{position:relative;isolation:isolate;overflow:hidden;padding-top:clamp(240px,70vw,360px)}
 .xbg-b.on::before{content:"";position:absolute;inset:0;z-index:-2;background:var(--bgimg) center top/100% auto no-repeat}
 .xbg-b.on::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 0,transparent 150px,color-mix(in srgb,var(--card) 50%,transparent) 230px,color-mix(in srgb,var(--card) 85%,transparent) 300px,var(--card) min(360px,92vw))}
-.xbg-b.on h2,.xbg-b.on .day span{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
+.xbg-b.on h2,.xbg-b.on .day span,.xbg-b.on .tot{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
 .xbg h2,.xbg label{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent),0 0 2px color-mix(in srgb,var(--card) 80%,transparent)}
 .mrow{display:grid;grid-template-columns:clamp(78px,26%,120px) minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
 .mc,.mcname{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 8px}
@@ -334,7 +334,7 @@ header h1{flex:1}
       <p class="swipehint">← 왼쪽으로 밀면 내 계좌</p>
     </div>
     <div class="page" role="tabpanel" aria-label="내 계좌">
-  <section class="panel accs" aria-label="내 계좌">
+  <section class="panel accs xbg-b" id="accPanel" aria-label="내 계좌">
     <div class="ahead">
       <h2>내 계좌 <button type="button" class="pay" id="aSort" aria-pressed="false">순서 바꾸기</button></h2>
       <div class="tot"><small>총 잔액</small><span class="num" id="aTot">0원</span></div>
@@ -399,6 +399,10 @@ header h1{flex:1}
     <p class="note" style="margin-top:0">고정지출 화면 맨 아래 칸에 그라데이션 배경으로 들어가요. 고른 사진은 이 폰에만 저장되고 인터넷에는 올라가지 않아요.</p>
     <div class="bgprev" id="bgPrev"></div>
     <div class="bkrow"><label class="pay filelbl">갤러리에서 사진 고르기<input type="file" id="bgPick" accept="image/*"></label><button type="button" class="pay" id="bgClear" hidden>사진 빼기</button></div>
+    <h2 style="margin-top:20px">내 계좌 배경 사진</h2>
+    <p class="note" style="margin-top:0">내 계좌 화면 칸에 그라데이션 배경으로 들어가요. 이 폰에만 저장돼요.</p>
+    <div class="bgprev" id="bgPrev2"></div>
+    <div class="bkrow"><label class="pay filelbl">갤러리에서 사진 고르기<input type="file" id="bgPick2" accept="image/*"></label><button type="button" class="pay" id="bgClear2" hidden>사진 빼기</button></div>
   </section>
     <section class="panel bk" aria-label="백업과 데이터 옮기기">
     <h2 style="margin-top:4px">백업 · 데이터 옮기기</h2>
@@ -1127,24 +1131,26 @@ $('smsPrev').addEventListener('click',e=>{
 {const sp=new URLSearchParams(location.search),st=[sp.get('title'),sp.get('text'),sp.get('url')].filter(Boolean).join(' ');
  if(st){setTimeout(()=>{smsOpen(true);$('smsText').value=st;smsPreview();if(window.goPage)goPage(0,false);setTimeout(()=>$('smsW').scrollIntoView({block:'center'}),350)},0);try{history.replaceState(null,'',location.pathname)}catch(e){}}}
 
-// ---- 고정지출 배경 사진 (이 기기에만 저장) ----
-const BGKEY='gagyebu.bg2.v1';
-function renderBg(){
-  let d=null;try{d=localStorage.getItem(BGKEY)}catch(e){}
-  const pnl=$('xListPanel');pnl.classList.toggle('on',!!d);
+// ---- 배경 사진 (고정지출 메모 칸, 내 계좌 칸) · 이 기기에만 저장 ----
+const BG_SLOTS=[{key:'gagyebu.bg2.v1',panel:'xListPanel',prev:'bgPrev',pick:'bgPick',clear:'bgClear',name:'고정지출'},{key:'gagyebu.bgacc.v1',panel:'accPanel',prev:'bgPrev2',pick:'bgPick2',clear:'bgClear2',name:'내 계좌'}];
+function renderBg(){BG_SLOTS.forEach(sl=>{
+  let d=null;try{d=localStorage.getItem(sl.key)}catch(e){}
+  const pnl=$(sl.panel);pnl.classList.toggle('on',!!d);
   if(d)pnl.style.setProperty('--bgimg',`url("${d}")`);else pnl.style.removeProperty('--bgimg');
-  $('bgPrev').innerHTML=d?' ':'';$('bgPrev').classList.toggle('has',!!d);$('bgPrev').style.backgroundImage=d?`url("${d}")`:'';
-  $('bgClear').hidden=!d;
-}
-$('bgPick').addEventListener('change',e=>{
-  const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{const img=new Image();img.onload=()=>{
-    const W=Math.min(720,img.width),H=Math.round(img.height*W/img.width),c=document.createElement('canvas');c.width=W;c.height=H;
-    c.getContext('2d').drawImage(img,0,0,W,H);
-    try{localStorage.setItem(BGKEY,c.toDataURL('image/jpeg',0.75));renderBg();toast('배경 사진을 넣었어요',false)}catch(err){toast('사진이 너무 커서 저장하지 못했어요',false)}
-  };img.src=r.result};r.readAsDataURL(f);e.target.value='';
+  $(sl.prev).innerHTML=d?' ':'';$(sl.prev).classList.toggle('has',!!d);$(sl.prev).style.backgroundImage=d?`url("${d}")`:'';
+  $(sl.clear).hidden=!d;
+})}
+BG_SLOTS.forEach(sl=>{
+  $(sl.pick).addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{const img=new Image();img.onload=()=>{
+      const W=Math.min(720,img.width),H=Math.round(img.height*W/img.width),c=document.createElement('canvas');c.width=W;c.height=H;
+      c.getContext('2d').drawImage(img,0,0,W,H);
+      try{localStorage.setItem(sl.key,c.toDataURL('image/jpeg',0.75));renderBg();toast(`${sl.name} 배경 사진을 넣었어요`,false)}catch(err){toast('사진이 너무 커서 저장하지 못했어요',false)}
+    };img.src=r.result};r.readAsDataURL(f);e.target.value='';
+  });
+  $(sl.clear).addEventListener('click',()=>{try{localStorage.removeItem(sl.key)}catch(e){}renderBg();toast(`${sl.name} 배경 사진을 뺐어요`,false)});
 });
-$('bgClear').addEventListener('click',()=>{try{localStorage.removeItem(BGKEY)}catch(e){}renderBg();toast('배경 사진을 뺐어요',false)});
 renderBg();
 
 // ---- 계좌별 내역·달력 ----
