@@ -184,9 +184,9 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .xbg-b.on::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 0,transparent 150px,color-mix(in srgb,var(--card) 50%,transparent) 230px,color-mix(in srgb,var(--card) 85%,transparent) 300px,var(--card) min(360px,92vw))}
 .xbg-b.on h2,.xbg-b.on .day span{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
 .xbg h2,.xbg label{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent),0 0 2px color-mix(in srgb,var(--card) 80%,transparent)}
-.mrow{display:grid;grid-template-columns:8em minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
+.mrow{display:grid;grid-template-columns:clamp(78px,26%,120px) minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
 .mc,.mcname{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 8px}
-.mcsel{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;padding:0 6px}
+.mcsel{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;padding:0 2px 0 8px}
 .mcn{grid-column:1/-1;justify-content:flex-start;text-align:left;font-weight:600}
 .mcname{width:100%;text-align:center}.mcname.mcn{text-align:left;padding:0 12px}.mcname::placeholder{color:light-dark(#1240e0,#9fb8ff);opacity:.9}
 .mamt{border-color:light-dark(#f1a3b5,#7a2b40)}
