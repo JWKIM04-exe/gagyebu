@@ -523,9 +523,9 @@ const RKEY='gagyebu.rows.v1',ROWS_DEF={e:['식비','교통','저축'],i:['급여
 let rowCats=JSON.parse(JSON.stringify(ROWS_DEF));
 try{const v=JSON.parse(localStorage.getItem(RKEY));if(v&&Array.isArray(v.e)&&Array.isArray(v.i))rowCats=v}catch(e){}
 const saveRows=()=>{try{localStorage.setItem(RKEY,JSON.stringify(rowCats))}catch(e){}};
-function rowOpts(t,sel){return CATS[t].map(c=>`<option${c===sel?' selected':''}>${esc(c)}</option>`).join('')}
+function rowOpts(t,sel){return CATS.e.map(c=>`<option${c===sel?' selected':''}>${esc(c)}</option>`).join('')}
 function renderRows(){
-  rowsType=type;const first=CATS[type][0];
+  rowsType=type;const first=CATS.e[0]; // 수입·지출 모두 같은 목록, 기본 식비
   $('mRows').innerHTML=[0,1,2,3].map(i=>`<div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,first)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"></div>`).join('');
   $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
   mSum();
