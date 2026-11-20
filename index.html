@@ -193,6 +193,13 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .mhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 4px}.mhead label{margin:0}
 .mhint{font-size:12px;color:var(--sub);margin:-2px 0 4px}
 .msum{text-align:right;font-weight:700;margin:2px 0 0;min-height:1.3em;font-variant-numeric:tabular-nums}
+.damt{font-size:34px;font-weight:800;text-align:center;margin:8px 0 14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.damt.e{color:var(--pkInk)}.damt.i{color:var(--emInk)}.damt.t{color:var(--ink)}
+.dl{display:grid;grid-template-columns:6.5em minmax(0,1fr);margin:0;border-top:1px solid light-dark(#e6e8e7,#1e3a2e)}
+.dl dt,.dl dd{margin:0;padding:12px 0;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e)}
+.dl dt{color:var(--sub);font-size:14px}.dl dd{overflow-wrap:anywhere}
+.dsub{color:var(--sub);font-size:13px}.dok{color:var(--emInk)}
+.it[data-id]{cursor:pointer}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
 .gear{display:grid;place-items:center;padding:0}.gear svg{width:22px;height:22px}
@@ -409,6 +416,13 @@ header h1{flex:1}
     <p class="err" id="bkErr" role="alert"></p>
     <button class="go" type="button" id="bkLoad" style="background:transparent;color:inherit;border:2px solid var(--line)">붙여넣은 백업 불러오기</button>
   </section>
+  </div>
+</div>
+<div class="sheet" id="detail" hidden>
+  <div class="sheetin" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="sheeth"><b id="dTitle">내역 자세히</b><button type="button" class="ib" id="dClose" aria-label="닫기">×</button></div>
+    <div id="dBody"></div>
+    <div class="abtns" style="margin-top:16px"><button type="button" class="go" id="dEdit">수정</button><button type="button" class="go ghost" id="dDel">삭제</button></div>
   </div>
 </div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="undo">되돌리기</button></div>
@@ -922,6 +936,37 @@ $('list').addEventListener('click',e=>{
   const fr=e.target.closest('[data-fid]');if(fr){editFixed(Number(fr.dataset.fid));return}
   const row=e.target.closest('.it');if(!row)return;
   const x=data.find(v=>v.id===Number(row.dataset.id));if(!x)return;
+  openDetail(x);
+});
+// ---- 내역 자세히 보기 → 수정 ----
+let detailId=null;
+function openDetail(x){
+  detailId=x.id;const [y,mo,da]=x.d.split('-').map(Number),dw='일월화수목금토'[new Date(x.d).getDay()];
+  const key=x.d.slice(0,7),act=fixed.filter(f=>active(f,key)),bud=x.t==='e'?budgetOf(x,[...act].sort((a,b)=>b.n.length-a.n.length),act.find(v=>v.n.includes('생활비'))):null;
+  const tl={e:'지출',i:'수입',t:'이체'}[x.t],sign=x.t==='i'?'+':x.t==='e'?'−':'';
+  const rows=[
+    ['구분',tl],
+    ['날짜',`${y}년 ${mo}월 ${da}일 (${dw})`],
+    x.t==='t'?['출금 통장',esc(accName(x.ac)||'—')]:['카테고리',esc(x.c||'—')],
+    x.t==='t'?['입금 통장',esc(accName(x.to)||'—')]:[x.t==='i'?'입금된 통장':'사용한 통장',esc(accName(x.ac)||'선택 안 함')],
+    ['메모',x.m?esc(x.m):'<span class="dsub">없음</span>'],
+    bud?['예산',`${esc(bud.n)}에서 빠짐`]:null,
+    x.sp?['더치페이',`${x.sp.n}명 · 총 ${won(x.sp.tot)} · 1인당 ${won(x.sp.sh)}<br>${x.sp.p.map(p=>`${esc(p.nm)} ${p.paid?'<b class="dok">받음</b>':'<span class="dsub">아직</span>'}`).join(' · ')}`]:null,
+    x.sms?['입력 방법','은행 문자로 입력']:null,
+    x.fxr?['입력 방법','고정지출 지출반영']:null,
+  ].filter(Boolean);
+  $('dBody').innerHTML=`<div class="damt ${x.t}">${sign}${won(x.a)}</div>${x.sp?`<div class="dsub" style="text-align:center;margin-top:-6px">내 몫 (총 ${won(x.sp.tot)} 결제)</div>`:''}
+    <dl class="dl">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  $('detail').hidden=false;document.body.style.overflow='hidden';$('dEdit').focus({preventScroll:true});
+}
+const closeDetail=()=>{$('detail').hidden=true;document.body.style.overflow='';detailId=null};
+$('dClose').addEventListener('click',closeDetail);
+$('detail').addEventListener('click',e=>{if(e.target===$('detail'))closeDetail()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('detail').hidden)closeDetail()});
+$('dDel').addEventListener('click',()=>{const id=detailId;closeDetail();const b=$('list').querySelector(`[data-del="${id}"]`);if(b)b.click()});
+$('dEdit').addEventListener('click',()=>{const x=data.find(v=>v.id===detailId);closeDetail();if(x)editItem(x)});
+function editItem(x){
+  if(window.goPage)goPage(0,false);
   editId=x.id;setType(x.t);manualAcc=true;
   $('fDate').value=x.d;
   if(x.sp){$('spOn').checked=true;spN=x.sp.n;setMoney('fAmt',x.sp.tot);spToggle();renderSpNames(x.sp.p.map(p=>p.nm));}
@@ -931,7 +976,7 @@ $('list').addEventListener('click',e=>{
   $('fTo').value=accs.some(a=>a.id===Number(x.to))?String(x.to):'0';
   $('formTitle').textContent='내역 수정';$('fBtn').textContent='수정 저장';$('fCancel').style.display='block';
   $('form').scrollIntoView({behavior:'smooth',block:'start'});
-});
+}
 
 $('undo').addEventListener('click',()=>{
   if(lastDel&&lastDel.v){if(lastDel.k==='a'){accs.push(lastDel.v);saveA();renderAccs()}else if(lastDel.k==='f'){fixed.push(lastDel.v);saveF()}else{data.push(lastDel.v);applyTx(lastDel.v,1);save();saveA();renderAccs()}lastDel=null;render()}
