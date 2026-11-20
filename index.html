@@ -80,6 +80,7 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 .st.on{color:var(--emInk)}.st.pre{color:var(--sub)}.st.end{color:var(--sub);opacity:.7}
 .tag.f{background:var(--ink);color:var(--bg)}
 .accs{margin-top:16px}
+.grid+.accs{margin-top:16px}
 .ahead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .ahead h2{margin:0}.tot{font-size:clamp(24px,5vw,32px);font-weight:800;white-space:nowrap}
 .tot small{font-size:13px;font-weight:400;color:var(--sub);margin-right:6px}
@@ -206,28 +207,6 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
     <div class="cdet" id="cDet"></div>
   </section>
 
-  <section class="panel accs" aria-label="내 계좌">
-    <div class="ahead">
-      <h2>내 계좌 <button type="button" class="pay" id="aSort" aria-pressed="false">순서 바꾸기</button></h2>
-      <div class="tot"><small>총 잔액</small><span class="num" id="aTot">0원</span></div>
-    </div>
-    <div class="acards" id="aList"></div>
-    <form class="aform" id="aform" autocomplete="off">
-      <h2 id="aTitle">계좌 추가</h2>
-      <div class="agrid">
-        <div><label for="aName">계좌 이름</label><input id="aName" type="text" maxlength="30" placeholder="예: 국민은행 월급통장" required></div>
-        <div><label for="aKind">종류</label><select id="aKind"></select></div>
-        <div><label for="aBal">현재 잔액 (원)</label><input id="aBal" class="money" data-neg="1" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="aBalK"></span></div>
-        <div><label for="aMemo">메모</label><input id="aMemo" type="text" maxlength="40" placeholder="예: 카드값 빠져나가는 통장"></div>
-      </div>
-      <label class="chk"><input type="checkbox" id="aDef"> 기본 통장으로 쓰기 (메모에 통장 이름이 없으면 여기서 빠져요)</label>
-      <div class="abtns">
-        <button class="go" type="submit" id="aBtn">계좌 추가</button>
-        <button class="go" type="button" id="aCancel" style="background:transparent;color:inherit;border:2px solid var(--line)">취소</button>
-      </div>
-    </form>
-  </section>
-
   <div class="grid">
     <form class="panel" id="form" autocomplete="off">
       <h2 id="formTitle">내역 추가</h2>
@@ -270,6 +249,28 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
       <p class="note">데이터는 이 폰에만 저장돼요. 가끔 아래에서 백업 코드를 복사해 두세요.</p>
     </section>
   </div>
+
+  <section class="panel accs" aria-label="내 계좌">
+    <div class="ahead">
+      <h2>내 계좌 <button type="button" class="pay" id="aSort" aria-pressed="false">순서 바꾸기</button></h2>
+      <div class="tot"><small>총 잔액</small><span class="num" id="aTot">0원</span></div>
+    </div>
+    <div class="acards" id="aList"></div>
+    <form class="aform" id="aform" autocomplete="off">
+      <h2 id="aTitle">계좌 추가</h2>
+      <div class="agrid">
+        <div><label for="aName">계좌 이름</label><input id="aName" type="text" maxlength="30" placeholder="예: 국민은행 월급통장" required></div>
+        <div><label for="aKind">종류</label><select id="aKind"></select></div>
+        <div><label for="aBal">현재 잔액 (원)</label><input id="aBal" class="money" data-neg="1" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="aBalK"></span></div>
+        <div><label for="aMemo">메모</label><input id="aMemo" type="text" maxlength="40" placeholder="예: 카드값 빠져나가는 통장"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="aDef"> 기본 통장으로 쓰기 (메모에 통장 이름이 없으면 여기서 빠져요)</label>
+      <div class="abtns">
+        <button class="go" type="submit" id="aBtn">계좌 추가</button>
+        <button class="go" type="button" id="aCancel" style="background:transparent;color:inherit;border:2px solid var(--line)">취소</button>
+      </div>
+    </form>
+  </section>
 
   <div class="fx">
     <form class="panel" id="xform" autocomplete="off">
