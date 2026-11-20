@@ -200,6 +200,9 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .dl dt{color:var(--sub);font-size:14px}.dl dd{overflow-wrap:anywhere}
 .dsub{color:var(--sub);font-size:13px}.dok{color:var(--emInk)}
 .it[data-id]{cursor:pointer}
+.asbal{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 12px;flex-wrap:wrap}.asbal b{font-size:26px;font-weight:800}
+.aslist{margin-top:10px}.aslist .it{cursor:pointer}
+.aslist .dayh{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin:14px 0 2px}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
 .gear{display:grid;place-items:center;padding:0}.gear svg{width:22px;height:22px}
@@ -423,6 +426,16 @@ header h1{flex:1}
     <div class="sheeth"><b id="dTitle">내역 자세히</b><button type="button" class="ib" id="dClose" aria-label="닫기">×</button></div>
     <div id="dBody"></div>
     <div class="abtns" style="margin-top:16px"><button type="button" class="go" id="dEdit">수정</button><button type="button" class="go ghost" id="dDel">삭제</button></div>
+  </div>
+</div>
+<div class="sheet" id="accSheet" hidden>
+  <div class="sheetin" role="dialog" aria-modal="true" aria-labelledby="asTitle">
+    <div class="sheeth"><b id="asTitle"></b><button type="button" class="ib" id="asClose" aria-label="닫기">×</button></div>
+    <div class="asbal"><span class="dsub" id="asKind"></span><b class="num" id="asBal"></b></div>
+    <div class="calh"><button type="button" class="ib" id="asPrev" aria-label="이전 달">‹</button><div><b id="asMon"></b><div class="calsum" id="asSum"></div></div><button type="button" class="ib" id="asNext" aria-label="다음 달">›</button></div>
+    <div class="cg" id="asCal"></div>
+    <div id="asList" class="aslist"></div>
+    <button type="button" class="go ghost" id="asEdit" style="margin-top:14px">계좌 정보 수정 · 잔액 고치기</button>
   </div>
 </div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="undo">되돌리기</button></div>
@@ -715,7 +728,7 @@ const accClick=e=>{
     const id=Number(del.dataset.adel);lastDel={k:'a',v:accs.find(a=>a.id===id)};
     accs=accs.filter(a=>a.id!==id);saveA();if(aEdit===id)closeA();renderAccs();toast('계좌를 삭제했어요');return;
   }
-  const c=e.target.closest('[data-acc]');if(c)openA(accs.find(a=>a.id===Number(c.dataset.acc)));
+  const c=e.target.closest('[data-acc]');if(c)openAccSheet(Number(c.dataset.acc));
 };
 $('aList').addEventListener('click',accClick);
 $('aSort').addEventListener('click',()=>{sortMode=!sortMode;if(sortMode)closeA();renderAccs()});
@@ -1131,6 +1144,48 @@ $('bgPick').addEventListener('change',e=>{
 });
 $('bgClear').addEventListener('click',()=>{try{localStorage.removeItem(BGKEY)}catch(e){}renderBg();toast('배경 사진을 뺐어요',false)});
 renderBg();
+
+// ---- 계좌별 내역·달력 ----
+let asId=null,asMon=null,asDay=null;
+function accEff(x,A){
+  if(x.t==='t'){let v=0;if(Number(x.ac)===A)v-=x.a;if(Number(x.to)===A)v+=x.a;return v}
+  if(Number(x.ac)!==A)return 0;
+  if(x.t==='i')return x.a;
+  return x.sp?-(x.sp.tot-x.sp.sh*x.sp.p.filter(p=>p.paid).length):-x.a;
+}
+function openAccSheet(id){asId=id;asMon=new Date(cur.getFullYear(),cur.getMonth(),1);asDay=null;renderAccSheet();$('accSheet').hidden=false;document.body.style.overflow='hidden';$('asClose').focus({preventScroll:true})}
+const closeAccSheet=()=>{$('accSheet').hidden=true;document.body.style.overflow='';asId=null};
+function renderAccSheet(){
+  const a=accs.find(v=>v.id===asId);if(!a){closeAccSheet();return}
+  const y=asMon.getFullYear(),m=asMon.getMonth(),key=`${y}-${pad(m+1)}`,first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate();
+  $('asTitle').textContent=a.n;$('asKind').textContent=`${a.k} · ${a.u.replace(/-/g,'.')} 기준 잔액`;$('asBal').textContent=(a.b<0?'−':'')+won(Math.abs(a.b));
+  const list=data.filter(x=>x.d.startsWith(key)).map(x=>({x,v:accEff(x,a.id)})).filter(o=>o.v!==0);
+  const inn=list.filter(o=>o.v>0).reduce((s,o)=>s+o.v,0),out=list.filter(o=>o.v<0).reduce((s,o)=>s-o.v,0);
+  $('asMon').textContent=`${y}년 ${m+1}월`;
+  $('asSum').innerHTML=`<span style="color:var(--emInk)">들어옴 ${won(inn)}</span> · <span style="color:var(--pkInk)">나감 ${won(out)}</span>`;
+  const by={};list.forEach(o=>{const d=Number(o.x.d.slice(8));by[d]=by[d]||{i:0,e:0};if(o.v>0)by[d].i+=o.v;else by[d].e-=o.v});
+  const tk=ymd(today);let h=['일','월','화','수','목','금','토'].map((w,i)=>`<div class="wd${i===0?' sun':i===6?' sat':''}">${w}</div>`).join('');
+  for(let i=0;i<first;i++)h+='<div class="cd empty"></div>';
+  for(let d=1;d<=last;d++){const ds=`${key}-${pad(d)}`,v=by[d],dow=(first+d-1)%7;
+    h+=`<button type="button" class="cd${ds===tk?' today':''}${ds===asDay?' sel':''}${dow===0?' sun':dow===6?' sat':''}" data-aday="${ds}"><span class="dn">${d}</span>${v&&v.e?`<span class="ce">−${short(v.e)}</span>`:''}${v&&v.i?`<span class="ci">+${short(v.i)}</span>`:''}</button>`}
+  $('asCal').innerHTML=h;
+  const shown=list.filter(o=>!asDay||o.x.d===asDay).sort((p,q)=>q.x.d.localeCompare(p.x.d)||q.x.id-p.x.id);
+  if(!shown.length){$('asList').innerHTML=`<p class="empty">${asDay?'이 날은 이 통장 내역이 없어요':'이 달에는 이 통장 내역이 없어요'}</p>`;return}
+  const days=[...new Set(shown.map(o=>o.x.d))];
+  $('asList').innerHTML=(asDay?'<p class="dsub" style="margin:10px 0 0">날짜를 한 번 더 누르면 이 달 전체가 보여요</p>':'')+days.map(d=>{
+    const its=shown.filter(o=>o.x.d===d),net=its.reduce((s,o)=>s+o.v,0),dt=new Date(d);
+    return `<div class="dayh"><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${'일월화수목금토'[dt.getDay()]})</span><span class="num">${net>=0?'+':'−'}${won(Math.abs(net))}</span></div>`+
+      its.map(({x,v})=>`<div class="it" data-xid="${x.id}"><span class="tag ${x.t}">${x.t==='t'?'이체':esc(x.c)}</span><span class="memo">${x.t==='t'?`${esc(accName(x.ac)||'?')} → ${esc(accName(x.to)||'?')}`:esc(x.m||'—')}</span><span class="num amt ${v>0?'i':'e'}">${v>0?'+':'−'}${won(Math.abs(v))}</span><span></span></div>`).join('');
+  }).join('');
+}
+$('asClose').addEventListener('click',closeAccSheet);
+$('accSheet').addEventListener('click',e=>{if(e.target===$('accSheet'))closeAccSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('accSheet').hidden)closeAccSheet()});
+$('asPrev').addEventListener('click',()=>{asMon=new Date(asMon.getFullYear(),asMon.getMonth()-1,1);asDay=null;renderAccSheet()});
+$('asNext').addEventListener('click',()=>{asMon=new Date(asMon.getFullYear(),asMon.getMonth()+1,1);asDay=null;renderAccSheet()});
+$('asCal').addEventListener('click',e=>{const b=e.target.closest('[data-aday]');if(!b)return;asDay=asDay===b.dataset.aday?null:b.dataset.aday;renderAccSheet()});
+$('asList').addEventListener('click',e=>{const r=e.target.closest('[data-xid]');if(!r)return;const x=data.find(v=>v.id===Number(r.dataset.xid));if(!x)return;closeAccSheet();openDetail(x)});
+$('asEdit').addEventListener('click',()=>{const a=accs.find(v=>v.id===asId);closeAccSheet();if(a)openA(a)});
 
 setType('e');renderAccs();resetForm();resetX();render();
 }
