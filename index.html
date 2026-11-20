@@ -151,6 +151,8 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 .gone{margin-top:12px;border-top:1px solid light-dark(#e6e8e7,#1e3a2e);padding-top:8px}.gone summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--sub);font-size:14px}.gone .fxi{opacity:.7}
 .bk{margin-top:16px}
 textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px solid light-dark(#d5d9d7,#2f4a3d);border-radius:10px;background:var(--bg);color:inherit;resize:vertical;word-break:break-all}
+.bpick{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:10px;margin:4px 0;border-radius:10px;background:light-dark(#fff3f6,#2a1620);justify-self:stretch}
+.bpick>span{flex-basis:100%;font-size:13px}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;gap:12px;align-items:center}
 .toast button{background:none;border:0;color:var(--em);font-weight:800;cursor:pointer;min-height:36px}
@@ -451,7 +453,7 @@ function render(){
     const real=f.a-used[f.id],manual=!!(f.done&&f.done[key]),done=manual||real===0;
     const left=manual?0:real,pct=manual?0:f.a?Math.max(0,Math.min(100,left/f.a*100)):0;
     const val=left<0?won(-left)+' <small>초과</small>':done?'0원 <small>다 씀</small>':won(left)+' <small>남음</small>';
-    return `<div class="brow${done?' isdone':''}"><span class="bn">${esc(f.n)}</span><span class="bv num${left<0?' over':done?' done':''}">${val}</span><button type="button" class="bchk" data-bdone="${f.id}" aria-pressed="${done}" aria-label="${esc(f.n)} 다 씀 표시">✓</button><button type="button" class="bchk rf" data-brf="${f.id}" aria-pressed="${!!rx}" aria-label="${esc(f.n)} 지출에 반영">✓</button><div class="bbar"><i style="width:${pct}%"></i></div><span class="bs">${rx?`지출에 반영함 · ${won(rx.a)} 기록${accName(rx.ac)?' ('+esc(accName(rx.ac))+')':''} · `:''}${manual?`다 쓴 것으로 표시 · 기록된 사용 ${won(used[f.id])}`:`${won(f.a)} 중 ${won(used[f.id])} 사용`}</span></div>`;
+    return `<div class="brow${done?' isdone':''}"><span class="bn">${esc(f.n)}</span><span class="bv num${left<0?' over':done?' done':''}">${val}</span><button type="button" class="bchk" data-bdone="${f.id}" aria-pressed="${done}" aria-label="${esc(f.n)} 다 씀 표시">✓</button><button type="button" class="bchk rf" data-brf="${f.id}" aria-pressed="${!!rx}" aria-label="${esc(f.n)} 지출에 반영">✓</button><div class="bbar"><i style="width:${pct}%"></i></div>${pickFor===f.id?`<div class="bpick"><span>어느 통장에서 뺄까요? 고른 통장은 다음부터 자동으로 쓰여요.</span>${accs.map(a=>`<button type="button" class="pay" data-brf="${f.id}" data-acc="${a.id}">${esc(a.n)}</button>`).join('')}<button type="button" class="pay" data-brf="${f.id}" data-acc="0">통장 없이 지출만</button></div>`:''}<span class="bs">${rx?`지출에 반영함 · ${won(rx.a)} 기록${accName(rx.ac)?' ('+esc(accName(rx.ac))+')':''} · `:''}${manual?`다 쓴 것으로 표시 · 기록된 사용 ${won(used[f.id])}`:`${won(f.a)} 중 ${won(used[f.id])} 사용`}</span></div>`;
   }).join('')+(living?'':'<p class="bs">고정지출에 \'생활비\'를 만들면 메모 없는 지출이 거기서 빠져요.</p>'):'';
   $('qm').innerHTML=fxAct.map(f=>`<button type="button" class="pay" data-qm="${esc(f.n)}">${esc(f.n)}</button>`).join('');
   $('qm').hidden=type!=='e'||!fxAct.length;
@@ -610,12 +612,17 @@ $('fxSum').addEventListener('click',e=>{
   if(rb){
     const key=`${cur.getFullYear()}-${pad(cur.getMonth()+1)}`,f=fixed.find(v=>v.id===Number(rb.dataset.brf));if(!f)return;
     const ex=data.find(x=>x.fxr===f.id&&x.d.startsWith(key));
-    if(ex){applyTx(ex,-1);data=data.filter(x=>x!==ex);save();saveA();renderAccs();render();toast(`${f.n} 지출 반영을 취소했어요`,false);return}
+    if(ex){pickFor=null;applyTx(ex,-1);data=data.filter(x=>x!==ex);save();saveA();renderAccs();render();toast(`${f.n} 지출 반영을 취소했어요`,false);return}
     const fxAct=fixed.filter(v=>active(v,key)),byLen=[...fxAct].sort((a,b)=>b.n.length-a.n.length),living=fxAct.find(v=>v.n.includes('생활비'));
     const used=data.filter(x=>x.t==='e'&&x.d.startsWith(key)&&budgetOf(x,byLen,living)===f).reduce((s,x)=>s+x.a,0);
-    const amt=f.a-used;if(amt<=0){toast(`${f.n}은 이미 다 썼어요 (남은 금액 0원)`,false);return}
+    const amt=f.a-used;if(amt<=0){pickFor=null;render();toast(`${f.n}은 이미 다 썼어요 (남은 금액 0원)`,false);return}
+    // 출금 통장이 없으면 먼저 고르게 함 (고른 통장은 이 항목에 기억)
+    let acId=accs.some(a=>a.id===Number(f.ac))?Number(f.ac):0;
+    if(rb.dataset.acc!==undefined){acId=Number(rb.dataset.acc);if(acId){f.ac=acId;saveF()}}
+    else if(!acId&&accs.length){pickFor=pickFor===f.id?null:f.id;render();return}
+    pickFor=null;
     const last=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
-    const item={id:Date.now(),t:'e',a:amt,c:f.c,m:f.n,d:`${key}-${pad(Math.min(f.day,last))}`,ac:accs.some(a=>a.id===Number(f.ac))?f.ac:0,fxr:f.id};
+    const item={id:Date.now(),t:'e',a:amt,c:f.c,m:f.n,d:`${key}-${pad(Math.min(f.day,last))}`,ac:acId,fxr:f.id};
     data.push(item);const r=applyTx(item,1);save();saveA();renderAccs();render();
     toast(`${f.n} ${won(amt)} 지출로 기록${r?` · ${r.a.n} 잔액 ${won(r.a.b)}`:''}`,false);return;
   }
@@ -625,7 +632,7 @@ $('fxSum').addEventListener('click',e=>{
   saveF();render();toast(f.done[key]?`${f.n} 이번 달 다 씀으로 체크했어요`:`${f.n} 체크를 풀었어요`,false);
 });
 // ---- 달력 ----
-let calOpen=false,selDay=null;
+let calOpen=false,selDay=null,pickFor=null;
 const short=n=>n>=10000?(Math.round(n/1000)/10).toLocaleString('ko-KR')+'만':comma(n);
 function renderCal(key,month){
   if(!calOpen)return;
