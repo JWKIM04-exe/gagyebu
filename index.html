@@ -126,6 +126,8 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 .bbar{grid-column:1/-1;height:5px;border-radius:3px;background:light-dark(#f1f1f1,#173026);overflow:hidden}.bbar i{display:block;height:100%;background:var(--em);border-radius:4px;transition:width .4s}
 .bs{grid-column:1/-1;font-size:11px;color:var(--sub);margin:0}
 .qm{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.qm[hidden]{display:none}
+.pay.mine{border-color:var(--emInk);color:var(--emInk);font-weight:600}.pay.qplus{border-style:dashed;color:var(--sub)}.pay.qdel{border-color:var(--pkInk);color:var(--pkInk)}
+.qadd{display:flex;gap:6px;flex-basis:100%}.qadd input{flex:1;height:40px}
 [hidden]{display:none!important}
 .bbar{justify-self:stretch;width:100%}
 .bal small{display:block}
@@ -474,7 +476,7 @@ function setType(t){
   $('fMemo').placeholder=tr?'예: 비상금 적립, 미래적금 납입':'예: 점심 김밥';
   $('fErr').textContent='';
   setTimeout(memoHint,0);
-  $('spRow').hidden=t!=='e';if($('qm').children.length)$('qm').hidden=t!=='e';if(t!=='e'&&$('spOn').checked){$('spOn').checked=false;spToggle()}
+  $('spRow').hidden=t!=='e';renderQM();if(t!=='e'&&$('spOn').checked){$('spOn').checked=false;spToggle()}
 }
 // 금액 입력: 쉼표 자동 + 한글 단위
 const comma=n=>n.toLocaleString('ko-KR');
@@ -520,8 +522,7 @@ function render(){
     const val=left<0?won(-left)+' <small>초과</small>':done?'0원 <small>다 씀</small>':won(left)+' <small>남음</small>';
     return `<div class="brow${done?' isdone':''}"><span class="bn">${esc(f.n)}</span><span class="bv num${left<0?' over':done?' done':''}">${val}</span><button type="button" class="bchk" data-bdone="${f.id}" aria-pressed="${done}" aria-label="${esc(f.n)} 다 씀 표시">✓</button><button type="button" class="bchk rf" data-brf="${f.id}" aria-pressed="${!!rx}" aria-label="${esc(f.n)} 지출에 반영">✓</button><div class="bbar"><i style="width:${pct}%"></i></div>${pickFor===f.id?`<div class="bpick"><span>어느 통장에서 뺄까요? 고른 통장은 다음부터 자동으로 쓰여요.</span>${accs.map(a=>`<button type="button" class="pay" data-brf="${f.id}" data-acc="${a.id}">${esc(a.n)}</button>`).join('')}<button type="button" class="pay" data-brf="${f.id}" data-acc="0">통장 없이 지출만</button></div>`:''}<span class="bs">${rx?`지출에 반영함 · ${won(rx.a)} 기록${accName(rx.ac)?' ('+esc(accName(rx.ac))+')':''} · `:''}${manual?`다 쓴 것으로 표시 · 기록된 사용 ${won(used[f.id])}`:`${won(f.a)} 중 ${won(used[f.id])} 사용`}</span></div>`;
   }).join('')+(living?'':'<p class="bs">고정지출에 \'생활비\'를 만들면 메모 없는 지출이 거기서 빠져요.</p>'):'';
-  $('qm').innerHTML=fxAct.map(f=>`<button type="button" class="pay" data-qm="${esc(f.n)}">${esc(f.n)}</button>`).join('');
-  $('qm').hidden=type!=='e'||!fxAct.length;
+  renderQM();
   renderFixed(key);
   renderCal(key,month);
   const due=data.filter(x=>x.sp).flatMap(x=>x.sp.p.filter(p=>!p.paid).map(()=>x.sp.sh));
@@ -751,6 +752,30 @@ $('cNext').addEventListener('click',()=>$('next').click());
 $('cGrid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selDay=selDay===b.dataset.day?null:b.dataset.day;render()});
 $('cDet').addEventListener('click',e=>{if(e.target.closest('#cAdd')&&selDay){resetForm();$('fDate').value=selDay;$('form').scrollIntoView({behavior:'smooth',block:'start'});$('fAmt').focus({preventScroll:true})}});
 
+// ---- 메모 빠른 입력: 내가 추가한 말 + 고정지출 이름 ----
+const QKEY='gagyebu.quick.v1';let quick=[],qmEdit=false,qmAdding=false;
+try{quick=JSON.parse(localStorage.getItem(QKEY))||[]}catch(e){}
+if(!Array.isArray(quick))quick=[];
+const saveQ=()=>{try{localStorage.setItem(QKEY,JSON.stringify(quick))}catch(e){}};
+function renderQM(){
+  const el=$('qm');if(!el)return;
+  if(type==='t'){el.hidden=true;return}el.hidden=false;
+  const key=($('fDate').value||ymd(today)).slice(0,7);
+  const fx=type==='e'?fixed.filter(f=>active(f,key)).map(f=>f.n).filter(n=>!quick.includes(n)):[];
+  el.innerHTML=quick.map((w,i)=>qmEdit?`<button type="button" class="pay qdel" data-qdel="${i}" aria-label="${esc(w)} 지우기">${esc(w)} ×</button>`:`<button type="button" class="pay mine" data-qm="${esc(w)}">${esc(w)}</button>`).join('')+
+    (qmEdit?'':fx.map(n=>`<button type="button" class="pay" data-qm="${esc(n)}">${esc(n)}</button>`).join(''))+
+    (qmAdding?`<span class="qadd"><input id="qmIn" type="text" maxlength="15" placeholder="자주 쓰는 말 (예: 점심)" aria-label="추가할 말"><button type="button" class="pay mine" id="qmSave">추가</button><button type="button" class="pay" id="qmCancel">취소</button></span>`
+      :`<button type="button" class="pay qplus" id="qmPlus">+ 직접 추가</button>${quick.length?`<button type="button" class="pay qplus" id="qmEditBtn">${qmEdit?'완료':'편집'}</button>`:''}`);
+  if(qmAdding){const i=$('qmIn');i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('qmSave').click()}})}
+}
+$('qm').addEventListener('click',e=>{
+  if(e.target.closest('#qmPlus')){qmAdding=true;qmEdit=false;renderQM();return}
+  if(e.target.closest('#qmCancel')){qmAdding=false;renderQM();return}
+  if(e.target.closest('#qmSave')){const w=$('qmIn').value.trim();if(w&&!quick.includes(w)){quick.push(w);saveQ()}qmAdding=false;renderQM();if(w)toast(`'${w}' 버튼을 추가했어요`,false);return}
+  if(e.target.closest('#qmEditBtn')){qmEdit=!qmEdit;renderQM();return}
+  const d=e.target.closest('[data-qdel]');if(d){const w=quick[Number(d.dataset.qdel)];quick.splice(Number(d.dataset.qdel),1);saveQ();if(!quick.length)qmEdit=false;renderQM();toast(`'${w}' 버튼을 지웠어요`,false);return}
+});
+$('fDate').addEventListener('change',renderQM);
 $('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(!b)return;const m=$('fMemo').value.trim(),n=b.dataset.qm;$('fMemo').value=m&&!memoHas(m,n)?m+' '+n:(m||n);$('fMemo').dispatchEvent(new Event('input'));$('fMemo').focus()});
 
 $('form').addEventListener('submit',e=>{
@@ -819,7 +844,7 @@ $('undo').addEventListener('click',()=>{
 // ---- 백업 / 복원 ----
 let bkArm=false;
 $('bkCopy').addEventListener('click',async()=>{
-  const code=JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs});
+  const code=JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick});
   $('bkText').value=code;$('bkErr').textContent='';
   try{await navigator.clipboard.writeText(code);toast('백업 코드를 복사했어요',false)}
   catch(e){$('bkText').focus();$('bkText').select();toast('아래 칸의 글자를 전체 선택해 복사해 주세요',false)}
@@ -829,7 +854,7 @@ $('bkLoad').addEventListener('click',()=>{
   if(!o||o.app!=='gagyebu'||!Array.isArray(o.data)||!Array.isArray(o.fixed)||!Array.isArray(o.accs)){$('bkErr').textContent='백업 코드가 올바르지 않아요. 처음부터 끝까지 전부 붙여넣었는지 확인해 주세요.';return}
   if(!bkArm){bkArm=true;$('bkLoad').textContent='지금 데이터를 덮어써요. 한 번 더 누르면 불러와요';$('bkErr').textContent='';setTimeout(()=>{bkArm=false;$('bkLoad').textContent='붙여넣은 백업 불러오기'},6000);return}
   bkArm=false;$('bkLoad').textContent='붙여넣은 백업 불러오기';
-  data=o.data;fixed=o.fixed;accs=o.accs;save();saveF();saveA();
+  data=o.data;fixed=o.fixed;accs=o.accs;save();saveF();saveA();if(Array.isArray(o.quick)){quick=o.quick;saveQ()}
   $('bkText').value='';renderAccs();resetForm();resetX();render();
   toast(`불러왔어요 · 내역 ${data.length}건, 고정지출 ${fixed.length}개, 계좌 ${accs.length}개`,false);
 });
