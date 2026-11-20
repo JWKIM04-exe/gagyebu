@@ -153,6 +153,11 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 .cdet .add{margin-top:10px;min-height:44px;width:100%;border:2px dashed var(--line);border-radius:10px;background:transparent;cursor:pointer;font-weight:600}
 .gone{margin-top:12px;border-top:1px solid light-dark(#e6e8e7,#1e3a2e);padding-top:8px}.gone summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--sub);font-size:14px}.gone .fxi{opacity:.7}
 .bk{margin-top:16px}
+.bkh{font-size:15px;margin:16px 0 8px}
+.bkrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.bkrow:empty{display:none}
+.bkmsg{font-size:13px;margin:6px 0}.bkmsg.ok{color:var(--emInk)}.bkmsg.warn{color:var(--pkInk)}
+#bkOut{font-size:12px}
+.filelbl{display:inline-flex;align-items:center;position:relative;overflow:hidden}.filelbl input{position:absolute;inset:0;opacity:0;cursor:pointer}
 textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px solid light-dark(#d5d9d7,#2f4a3d);border-radius:10px;background:var(--bg);color:inherit;resize:vertical;word-break:break-all}
 .bpick{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:10px;margin:4px 0;border-radius:10px;background:light-dark(#fff3f6,#2a1620);justify-self:stretch}
 .bpick>span{flex-basis:100%;font-size:13px}
@@ -336,25 +341,26 @@ header h1{flex:1}
     </div>
    </div>
   </div>
-  <section class="panel bk" aria-label="백업과 데이터 옮기기">
-    <h2>백업 · 데이터 옮기기</h2>
-    <p class="note" style="margin-top:0">다른 폰이나 새 앱으로 옮길 때 써요. 여기서 백업 코드를 복사한 다음, 새 앱의 같은 칸에 붙여넣고 불러오면 내역·고정지출·계좌가 그대로 옮겨져요.</p>
-    <div class="abtns"><button class="go" type="button" id="bkCopy">백업 코드 복사</button></div>
-    <label for="bkText">백업 코드 (복사가 안 되면 아래 글자를 길게 눌러 전체 복사)</label>
-    <textarea id="bkText" rows="3" placeholder="여기에 백업 코드를 붙여넣고 아래 버튼을 누르세요"></textarea>
-    <p class="err" id="bkErr" role="alert"></p>
-    <button class="go" type="button" id="bkLoad" style="background:transparent;color:inherit;border:2px solid var(--line)">붙여넣은 백업 불러오기</button>
-  </section>
 </div>
 <div class="sheet" id="settings" hidden>
   <div class="sheetin" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="sheeth"><b id="setTitle">설정</b><button type="button" class="ib" id="setClose" aria-label="설정 닫기">×</button></div>
     <section class="panel bk" aria-label="백업과 데이터 옮기기">
     <h2 style="margin-top:4px">백업 · 데이터 옮기기</h2>
-    <p class="note" style="margin-top:0">다른 폰이나 새 앱으로 옮길 때 써요. 여기서 백업 코드를 복사한 다음, 새 앱의 같은 칸에 붙여넣고 불러오면 내역·고정지출·계좌가 그대로 옮겨져요.</p>
-    <div class="abtns"><button class="go" type="button" id="bkCopy">백업 코드 복사</button></div>
-    <label for="bkText">백업 코드 (복사가 안 되면 아래 글자를 길게 눌러 전체 복사)</label>
-    <textarea id="bkText" rows="3" placeholder="여기에 백업 코드를 붙여넣고 아래 버튼을 누르세요"></textarea>
+    <p class="note" style="margin-top:0">다른 폰이나 새 앱으로 옮길 때 써요. 내역·고정지출·계좌·메모 버튼이 모두 옮겨져요.</p>
+    <h3 class="bkh">1. 내보내기</h3>
+    <button class="go" type="button" id="bkCopy">백업 코드 복사</button>
+    <div class="bkrow"><button class="pay" type="button" id="bkShare" hidden>카톡·메모로 보내기</button><button class="pay" type="button" id="bkFile" hidden>백업 파일 저장</button></div>
+    <div id="bkOutW" hidden>
+      <label for="bkOut">내 백업 코드</label>
+      <textarea id="bkOut" rows="4" readonly></textarea>
+      <p class="bkmsg" id="bkMsg"></p>
+      <button class="pay" type="button" id="bkSel">전체 선택</button>
+    </div>
+    <h3 class="bkh">2. 불러오기</h3>
+    <label for="bkText">백업 코드 붙여넣기</label>
+    <textarea id="bkText" rows="3" placeholder="여기를 길게 눌러 붙여넣기"></textarea>
+    <div class="bkrow"><label class="pay filelbl">백업 파일 열기<input type="file" id="bkPick" accept=".json,.txt,application/json,text/plain"></label></div>
     <p class="err" id="bkErr" role="alert"></p>
     <button class="go" type="button" id="bkLoad" style="background:transparent;color:inherit;border:2px solid var(--line)">붙여넣은 백업 불러오기</button>
   </section>
@@ -847,12 +853,27 @@ $('undo').addEventListener('click',()=>{
 
 // ---- 백업 / 복원 ----
 let bkArm=false;
+const bkCode=()=>JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick,qhide});
+const inFrame=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+if(!inFrame&&navigator.share)$('bkShare').hidden=false;
+if(!inFrame)$('bkFile').hidden=false;
 $('bkCopy').addEventListener('click',async()=>{
-  const code=JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick,qhide});
-  $('bkText').value=code;$('bkErr').textContent='';
-  try{await navigator.clipboard.writeText(code);toast('백업 코드를 복사했어요',false)}
-  catch(e){$('bkText').focus();$('bkText').select();toast('아래 칸의 글자를 전체 선택해 복사해 주세요',false)}
+  const code=bkCode(),ta=$('bkOut');$('bkOutW').hidden=false;ta.value=code;$('bkErr').textContent='';
+  let ok=false;
+  try{await navigator.clipboard.writeText(code);ok=true}catch(e){}
+  if(!ok){try{ta.focus();ta.select();ta.setSelectionRange(0,code.length);ok=document.execCommand('copy')}catch(e){}}
+  $('bkMsg').textContent=ok?'복사됐어요. 새 앱의 "백업 코드 붙여넣기" 칸에 붙여넣으세요.':'자동 복사가 막혀 있어요. 위 칸을 길게 눌러 "모두 선택" → "복사"를 눌러 주세요.';
+  $('bkMsg').className='bkmsg'+(ok?' ok':' warn');
+  toast(ok?'백업 코드를 복사했어요':'위 칸을 길게 눌러 전체 복사해 주세요',false);
 });
+$('bkSel').addEventListener('click',()=>{const ta=$('bkOut');ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);try{if(document.execCommand('copy'))toast('복사했어요',false)}catch(e){}});
+$('bkShare').addEventListener('click',async()=>{try{await navigator.share({title:'가계부 백업',text:bkCode()})}catch(e){}});
+$('bkFile').addEventListener('click',()=>{
+  try{const u=URL.createObjectURL(new Blob([bkCode()],{type:'application/json'})),a=document.createElement('a');
+    a.href=u;a.download=`가계부백업-${ymd(new Date())}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);
+    toast('다운로드 폴더에 백업 파일을 저장했어요',false)}catch(e){toast('파일 저장이 안 돼요. 코드 복사를 써 주세요',false)}
+});
+$('bkPick').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('bkText').value=String(r.result);$('bkErr').textContent='';toast('파일을 읽었어요. 아래 불러오기를 눌러 주세요',false)};r.readAsText(f);e.target.value=''});
 $('bkLoad').addEventListener('click',()=>{
   let o;try{o=JSON.parse($('bkText').value.trim())}catch(e){}
   if(!o||o.app!=='gagyebu'||!Array.isArray(o.data)||!Array.isArray(o.fixed)||!Array.isArray(o.accs)){$('bkErr').textContent='백업 코드가 올바르지 않아요. 처음부터 끝까지 전부 붙여넣었는지 확인해 주세요.';return}
