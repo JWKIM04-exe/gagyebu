@@ -283,7 +283,7 @@ header h1{flex:1}
           <div id="spNames"></div>
         </div>
       </div>
-      <div id="fCatW"><label for="fCat">카테고리</label><select id="fCat"></select></div>
+      <div id="fCatW"><label for="fCat">카테고리</label><select id="fCat"></select><input id="fCatC" type="text" maxlength="12" placeholder="카테고리 직접 입력 (예: 경조사, 미용)" aria-label="카테고리 직접 입력" hidden style="margin-top:6px"></div>
       <label for="fAcc" id="fAccL">사용한 통장</label><select id="fAcc"></select>
       <div id="fToW" hidden><label for="fTo">입금 통장</label><select id="fTo"></select></div>
       <p class="err" id="fErr" role="alert"></p>
@@ -400,7 +400,7 @@ header h1{flex:1}
 
 <script>
 {
-const CATS={e:['식비','교통','주거','쇼핑','문화','의료','기타'],i:['급여','용돈','부수입','기타'],t:['이체']};
+const CATS={e:['식비','교통','주거','쇼핑','문화','의료','저축','기타'],i:['급여','용돈','부수입','기타'],t:['이체']};
 const KEY='gagyebu.v1';
 const $=id=>document.getElementById(id);
 const won=n=>n.toLocaleString('ko-KR')+'원';
@@ -502,10 +502,17 @@ const closeA=()=>{aEdit=null;$('aform').classList.remove('open')};
 let cur=new Date(today.getFullYear(),today.getMonth(),1);
 let type='e',editId=null,xEdit=null,lastDel=null,tTimer;
 
+function catToggle(){const o=$('fCat').value==='기타';$('fCatC').hidden=!o;if(!o)$('fCatC').value=''}
+const catVal=()=>$('fCat').value==='기타'?($('fCatC').value.trim()||'기타'):$('fCat').value;
+function setCat(c){if([...$('fCat').options].some(o=>o.value===c&&c!=='기타')){$('fCat').value=c;catToggle()}else{$('fCat').value='기타';catToggle();$('fCatC').value=c==='기타'?'':c}}
+$('fCat').addEventListener('change',()=>{catToggle();if(!$('fCatC').hidden)$('fCatC').focus()});
 function setType(t){
   type=t;
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
-  $('fCat').innerHTML=CATS[t].map(c=>`<option>${c}</option>`).join('');
+  // 기본 카테고리 + 내가 직접 적어서 쓴 카테고리 + 기타(직접 입력)
+  const base=CATS[t].filter(c=>c!=='기타'),mine=t==='t'?[]:[...new Set(data.filter(x=>x.t===t&&x.c&&!CATS[t].includes(x.c)).map(x=>x.c))];
+  $('fCat').innerHTML=[...base,...mine].map(c=>`<option>${esc(c)}</option>`).join('')+(CATS[t].includes('기타')?'<option value="기타">기타 (직접 입력)</option>':'');
+  catToggle();
   const tr=t==='t';
   $('fCatW').hidden=tr;$('fToW').hidden=!tr;$('tHint').hidden=!tr;
   $('fAccL').textContent=tr?'출금 통장':(t==='i'?'입금된 통장':'사용한 통장');
@@ -827,7 +834,7 @@ $('form').addEventListener('submit',e=>{
     if(ac===to){$('fErr').textContent='출금 통장과 입금 통장이 같아요.';return}
   }
   $('fErr').textContent='';
-  const item={id:editId||Date.now(),t:type,a,c:$('fCat').value,m:$('fMemo').value.trim(),d:$('fDate').value,ac};
+  const item={id:editId||Date.now(),t:type,a,c:catVal(),m:$('fMemo').value.trim(),d:$('fDate').value,ac};
   if(type==='t')item.to=to;
   if(type==='e'&&$('spOn').checked){
     const {sh,mine}=spSplit(a,spN),old=editId&&(data.find(x=>x.id===editId)||{}).sp;
@@ -871,7 +878,7 @@ $('list').addEventListener('click',e=>{
   $('fDate').value=x.d;
   if(x.sp){$('spOn').checked=true;spN=x.sp.n;setMoney('fAmt',x.sp.tot);spToggle();renderSpNames(x.sp.p.map(p=>p.nm));}
   else{$('spOn').checked=false;spN=3;setMoney('fAmt',x.a);spToggle()}
-  $('fCat').value=x.c;$('fMemo').value=x.m;
+  setCat(x.c);$('fMemo').value=x.m;
   $('fAcc').value=accs.some(a=>a.id===Number(x.ac))?String(x.ac):'0';
   $('fTo').value=accs.some(a=>a.id===Number(x.to))?String(x.to):'0';
   $('formTitle').textContent='내역 수정';$('fBtn').textContent='수정 저장';$('fCancel').style.display='block';
