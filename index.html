@@ -153,6 +153,7 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px solid light-dark(#d5d9d7,#2f4a3d);border-radius:10px;background:var(--bg);color:inherit;resize:vertical;word-break:break-all}
 .bpick{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:10px;margin:4px 0;border-radius:10px;background:light-dark(#fff3f6,#2a1620);justify-self:stretch}
 .bpick>span{flex-basis:100%;font-size:13px}
+.mhint{font-size:13px;color:var(--emInk);margin:6px 0 0;min-height:1.2em}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;gap:12px;align-items:center}
 .toast button{background:none;border:0;color:var(--em);font-weight:800;cursor:pointer;min-height:36px}
@@ -246,6 +247,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
       <p class="err" id="fErr" role="alert"></p>
       <label for="fMemo">메모</label><input id="fMemo" type="text" maxlength="40" placeholder="예: 점심 김밥">
       <div class="qm" id="qm"></div>
+      <p class="mhint" id="mHint"></p>
       <button class="go" type="submit" id="fBtn">추가하기</button>
       <button class="go" type="button" id="fCancel" style="display:none;background:transparent;color:inherit;border:2px solid var(--line)">수정 취소</button>
     </form>
@@ -342,7 +344,7 @@ const expired=f=>{const e=enDate(f);return !!e&&ymd(today)>e};
 // 기간 안의 달이면 적용. 단 종료일이 지났으면 이번 달·이후 달에서는 사라짐(지난 달 기록은 유지)
 const active=(f,key)=>{const e=enDate(f);return f.s<=key&&(!e||key<=e.slice(0,7))&&!(expired(f)&&key>=ym)};
 
-const AKEY='gagyebu.accounts.v1',KINDS=['입출금','적금','예금','투자','현금','기타'];
+const AKEY='gagyebu.accounts.v1',KINDS=['입출금','카드(선불·지역화폐)','적금','예금','투자','현금','기타'];
 const aSample=[
   {id:1,n:'농협 주거래통장',k:'입출금',b:1840000,m:'월급 들어오고 카드값 나가는 통장',u:ymd(today)},
   {id:2,n:'비상금통장',k:'입출금',b:500000,m:'',u:ymd(today)},
@@ -409,6 +411,7 @@ function setType(t){
   $('fAccL').textContent=tr?'출금 통장':(t==='i'?'입금된 통장':'사용한 통장');
   $('fMemo').placeholder=tr?'예: 비상금 적립, 미래적금 납입':'예: 점심 김밥';
   $('fErr').textContent='';
+  setTimeout(memoHint,0);
   $('spRow').hidden=t!=='e';if($('qm').children.length)$('qm').hidden=t!=='e';if(t!=='e'&&$('spOn').checked){$('spOn').checked=false;spToggle()}
 }
 // 금액 입력: 쉼표 자동 + 한글 단위
@@ -569,7 +572,7 @@ $('xList').addEventListener('click',e=>{
 function resetForm(){
   editId=null;$('form').reset();$('fDate').value=ymd(today);
   $('fAcc').value=accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0';
-  spN=3;spToggle();
+  spN=3;spToggle();setTimeout(memoHint,0);
   $('formTitle').textContent='내역 추가';$('fBtn').textContent='추가하기';$('fCancel').style.display='none';
 }
 
@@ -606,7 +609,25 @@ $('spMinus').addEventListener('click',()=>{if(spN>2){spN--;$('spN').textContent=
 $('spPlus').addEventListener('click',()=>{if(spN<30){spN++;$('spN').textContent=spN;renderSpNames();spCalc()}});
 $('fAmt').addEventListener('input',()=>{if($('spOn').checked)spCalc()});
 
-function budgetOf(x,byLen,living){return byLen.find(f=>x.m&&x.m.includes(f.n))||living||null}
+// 메모 인식: 띄어쓰기 무시, '기름값'은 '기름'으로도, '충주사랑카드'는 '충주사랑'으로도 알아들음
+const norm=s=>(s||'').replace(/\s+/g,'');
+const keysOf=(n,re)=>{const k=norm(n),t=k.replace(re,'');return t.length>=2&&t!==k?[k,t]:[k]};
+const memoHas=(m,n)=>{const M=norm(m);return !!M&&keysOf(n,/(값|비|료)$/).some(k=>M.includes(k))};
+function budgetOf(x,byLen,living){return byLen.find(f=>memoHas(x.m,f.n))||living||null}
+function accFromMemo(m){const M=norm(m);if(!M)return null;return [...accs].sort((a,b)=>norm(b.n).length-norm(a.n).length).find(a=>keysOf(a.n,/(통장|카드|계좌)$/).some(k=>M.includes(k)))||null}
+function memoHint(){
+  const el=$('mHint');if(type==='t'){el.textContent='';return}
+  const m=$('fMemo').value,parts=[];
+  const ac=accName($('fAcc').value);if(ac)parts.push(`${ac} 잔액에서 ${type==='i'?'더해져요':'빠져요'}`);
+  if(type==='e'){
+    const key=($('fDate').value||ymd(today)).slice(0,7),act=fixed.filter(f=>active(f,key));
+    const f=budgetOf({m},[...act].sort((a,b)=>b.n.length-a.n.length),act.find(v=>v.n.includes('생활비')));
+    if(f)parts.push(`${f.n} 예산에서 빠져요`);
+  }
+  el.textContent=parts.length?'→ '+parts.join(' · '):'';
+}
+$('fMemo').addEventListener('input',()=>{const a=type!=='t'&&accFromMemo($('fMemo').value);if(a)$('fAcc').value=String(a.id);memoHint()});
+$('fAcc').addEventListener('change',memoHint);$('fDate').addEventListener('change',memoHint);
 $('fxSum').addEventListener('click',e=>{
   const rb=e.target.closest('[data-brf]');
   if(rb){
@@ -661,7 +682,7 @@ $('cNext').addEventListener('click',()=>$('next').click());
 $('cGrid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selDay=selDay===b.dataset.day?null:b.dataset.day;render()});
 $('cDet').addEventListener('click',e=>{if(e.target.closest('#cAdd')&&selDay){resetForm();$('fDate').value=selDay;$('form').scrollIntoView({behavior:'smooth',block:'start'});$('fAmt').focus({preventScroll:true})}});
 
-$('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(b){$('fMemo').value=b.dataset.qm;$('fMemo').focus()}});
+$('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(!b)return;const m=$('fMemo').value.trim(),n=b.dataset.qm;$('fMemo').value=m&&!memoHas(m,n)?m+' '+n:(m||n);$('fMemo').dispatchEvent(new Event('input'));$('fMemo').focus()});
 
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
