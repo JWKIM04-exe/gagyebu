@@ -154,6 +154,12 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .bpick{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:10px;margin:4px 0;border-radius:10px;background:light-dark(#fff3f6,#2a1620);justify-self:stretch}
 .bpick>span{flex-basis:100%;font-size:13px}
 .mhint{font-size:13px;color:var(--emInk);margin:6px 0 0;min-height:1.2em}
+.ahead h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ahead h2 .pay{font-weight:600}
+#aSort[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ac.sorting{cursor:default;border-style:dashed}
+.mv{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.mv button{min-height:44px;border:2px solid var(--line);border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.mv button:disabled{opacity:.3;cursor:default}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;gap:12px;align-items:center}
 .toast button{background:none;border:0;color:var(--em);font-weight:800;cursor:pointer;min-height:36px}
@@ -202,7 +208,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 
   <section class="panel accs" aria-label="내 계좌">
     <div class="ahead">
-      <h2>내 계좌</h2>
+      <h2>내 계좌 <button type="button" class="pay" id="aSort" aria-pressed="false">순서 바꾸기</button></h2>
       <div class="tot"><small>총 잔액</small><span class="num" id="aTot">0원</span></div>
     </div>
     <div class="acards" id="aList"></div>
@@ -355,7 +361,7 @@ let accs;
 try{accs=JSON.parse(localStorage.getItem(AKEY))}catch(e){}
 if(!Array.isArray(accs))accs=window.APP_EMPTY?[]:aSample;
 const saveA=()=>{try{localStorage.setItem(AKEY,JSON.stringify(accs))}catch(e){}};
-let aEdit=null,lastAcc='0',manualAcc=false;
+let aEdit=null,lastAcc='0',manualAcc=false,sortMode=false;
 // 기본 통장: 직접 지정한 통장, 없으면 이름에 '농협'이 들어간 통장
 const defAcc=()=>accs.find(a=>a.def)||accs.find(a=>a.n.includes('농협'))||null;
 const accName=id=>(accs.find(a=>a.id===Number(id))||{}).n||'';
@@ -387,10 +393,12 @@ function fillAccSel(){
 
 function renderAccs(){
   $('aTot').textContent=(accs.reduce((s,a)=>s+a.b,0)<0?'−':'')+won(Math.abs(accs.reduce((s,a)=>s+a.b,0)));
-  $('aList').innerHTML=accs.map(a=>{
+  $('aSort').setAttribute('aria-pressed',sortMode);$('aSort').textContent=sortMode?'완료':'순서 바꾸기';
+  $('aList').innerHTML=accs.map((a,i)=>{
     const [y,mo,d]=a.u.split('-').map(Number);
-    return `<div class="ac" role="button" tabindex="0" data-acc="${a.id}"><span class="k">${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span><span class="u">${y}.${mo}.${d} 기준</span>${a.m?`<span class="m">${esc(a.m)}</span>`:''}<button class="x" data-adel="${a.id}" aria-label="${esc(a.n)} 삭제">×</button></div>`;
-  }).join('')+`<button class="ac add" type="button" id="aAdd">+ 계좌 추가</button>`;
+    const mv=sortMode?`<div class="mv"><button type="button" data-mv="${a.id}:-1" ${i===0?'disabled':''} aria-label="${esc(a.n)} 위로">▲ 위로</button><button type="button" data-mv="${a.id}:1" ${i===accs.length-1?'disabled':''} aria-label="${esc(a.n)} 아래로">▼ 아래로</button></div>`:`<button class="x" data-adel="${a.id}" aria-label="${esc(a.n)} 삭제">×</button>`;
+    return `<div class="ac${sortMode?' sorting':''}" ${sortMode?'':'role="button" tabindex="0"'} data-acc="${a.id}"><span class="k">${sortMode?`${i+1}번 · `:''}${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span>${sortMode?'':`<span class="u">${y}.${mo}.${d} 기준</span>${a.m?`<span class="m">${esc(a.m)}</span>`:''}`}${mv}</div>`;
+  }).join('')+(sortMode?'':`<button class="ac add" type="button" id="aAdd">+ 계좌 추가</button>`);
   fillAccSel();
 }
 function openA(a){
@@ -541,6 +549,11 @@ $('aform').addEventListener('submit',e=>{
   saveA();closeA();renderAccs();
 });
 const accClick=e=>{
+  const mvb=e.target.closest('[data-mv]');
+  if(mvb){const [id,dir]=mvb.dataset.mv.split(':').map(Number),i=accs.findIndex(a=>a.id===id),j=i+dir;
+    if(i<0||j<0||j>=accs.length)return;[accs[i],accs[j]]=[accs[j],accs[i]];saveA();renderAccs();
+    const btn=$('aList').querySelector(`[data-mv="${id}:${dir}"]`);if(btn&&!btn.disabled)btn.focus({preventScroll:true});return}
+  if(sortMode)return;
   if(e.target.closest('#aAdd')){openA(null);return}
   const del=e.target.closest('[data-adel]');
   if(del){
@@ -550,6 +563,7 @@ const accClick=e=>{
   const c=e.target.closest('[data-acc]');if(c)openA(accs.find(a=>a.id===Number(c.dataset.acc)));
 };
 $('aList').addEventListener('click',accClick);
+$('aSort').addEventListener('click',()=>{sortMode=!sortMode;if(sortMode)closeA();renderAccs()});
 $('aList').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-acc]')){e.preventDefault();accClick(e)}});
 
 $('xDay').innerHTML=Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}일</option>`).join('');
