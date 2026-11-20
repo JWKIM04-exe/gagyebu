@@ -168,6 +168,13 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .mv{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
 .mv button{min-height:44px;border:2px solid var(--line);border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
 .mv button:disabled{opacity:.3;cursor:default}
+.smsbox{margin:-4px 0 12px}
+#smsW{margin-top:8px}
+.smsp{border:2px solid var(--emInk);border-radius:12px;padding:12px;margin-top:8px;display:grid;gap:4px}
+.smsp b{font-size:17px}.smsp .sub{font-size:13px;color:var(--sub)}
+.smsp .warnt{font-size:13px;color:var(--pkInk)}
+.smsp .abtns{margin-top:6px}.smsp .go{margin-top:0;height:44px}
+.go.ghost{background:transparent;color:inherit;border:2px solid var(--line)}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
 .gear{display:grid;place-items:center;padding:0}.gear svg{width:22px;height:22px}
@@ -242,6 +249,14 @@ header h1{flex:1}
   <div class="grid">
     <form class="panel" id="form" autocomplete="off">
       <h2 id="formTitle">내역 추가</h2>
+      <div class="smsbox">
+        <button type="button" class="pay qplus" id="smsBtn" aria-expanded="false">은행 문자로 입력</button>
+        <div id="smsW" hidden>
+          <textarea id="smsText" rows="3" placeholder="은행 문자를 길게 눌러 복사한 뒤 여기에 붙여넣으세요"></textarea>
+          <div class="bkrow"><button type="button" class="pay" id="smsPaste" hidden>복사한 문자 붙여넣기</button><button type="button" class="pay" id="smsClear">지우기</button></div>
+          <div id="smsPrev"></div>
+        </div>
+      </div>
       <div class="seg" role="group" aria-label="구분">
         <button type="button" class="e" data-t="e" aria-pressed="true">지출</button>
         <button type="button" class="i" data-t="i" aria-pressed="false">수입</button>
@@ -647,7 +662,7 @@ $('xList').addEventListener('click',e=>{
 
 function resetForm(){
   editId=null;$('form').reset();$('fDate').value=ymd(today);
-  manualAcc=false;const da=defAcc();$('fAcc').value=da?String(da.id):(accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0');
+  smsPending=null;manualAcc=false;const da=defAcc();$('fAcc').value=da?String(da.id):(accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0');
   spN=3;spToggle();setTimeout(memoHint,0);
   $('formTitle').textContent='내역 추가';$('fBtn').textContent='추가하기';$('fCancel').style.display='none';
 }
@@ -807,6 +822,8 @@ $('form').addEventListener('submit',e=>{
   }
   if(editId){applyTx(data.find(x=>x.id===editId),-1);data=data.map(x=>x.id===editId?item:x)}else data.push(item);
   const r=applyTx(item,1);
+  if(smsPending&&!editId){item.sms=smsPending.sig;const sa=accs.find(v=>v.id===ac);if(smsPending.useBal&&sa&&smsPending.ac===ac){sa.b=smsPending.bal;sa.u=ymd(new Date())}}
+  smsPending=null;
   lastAcc=String(ac);save();saveA();renderAccs();
   if(r&&item.t==='t')toast(`이체 ${won(a)} · ${r.a.n} ${won(r.a.b)} / ${r.b.n} ${won(r.b.b)}`,false);
   else if(r&&item.sp)toast(`${r.a.n}에서 ${won(item.sp.tot)} 결제 · 지출엔 내 몫 ${won(item.a)}만 기록`,false);
@@ -916,6 +933,69 @@ $('setBtn').addEventListener('click',()=>openSet(true));
 $('setClose').addEventListener('click',()=>openSet(false));
 $('settings').addEventListener('click',e=>{if(e.target===$('settings'))openSet(false)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('settings').hidden)openSet(false)});
+
+// ---- 은행 문자 인식 ----
+let smsPending=null,smsCur=null;
+const BANKS=[['농협',/농협|NH/i],['국민',/국민|KB/],['신한',/신한/],['우리',/우리/],['하나',/하나/],['카카오',/카카오/],['토스',/토스/],['기업',/기업|IBK/i],['새마을',/새마을|MG/],['우체국',/우체국/],['수협',/수협/],['충주사랑',/충주사랑/]];
+function parseSMS(raw){
+  const t=String(raw||'').replace(/\[Web발신\]/g,' ').replace(/\s+/g,' ').trim();if(!t)return null;
+  const balM=t.match(/잔액\s*([\d,]+)\s*원/),bal=balM?Number(balM[1].replace(/,/g,'')):null;
+  const noBal=t.replace(/잔액\s*[\d,]+\s*원/g,' ');
+  const amtM=noBal.match(/([\d,]{1,15})\s*원/);if(!amtM)return null;
+  const amt=Number(amtM[1].replace(/,/g,''));if(!amt)return null;
+  const cancel=/취소/.test(t),tp=/입금/.test(t)?'i':'e';
+  const dM=t.match(/(\d{1,2})\/(\d{1,2})/),tmM=t.match(/(\d{1,2}):(\d{2})/);
+  let d=ymd(today);
+  if(dM){const mo=Number(dM[1]),da=Number(dM[2]);let y=today.getFullYear();if(mo>today.getMonth()+2)y--;d=`${y}-${pad(mo)}-${pad(da)}`}
+  const bank=(BANKS.find(([,re])=>re.test(t))||[])[0]||'';
+  let acc=(bank&&accs.find(a=>a.n.includes(bank)))||accFromMemo(t)||defAcc()||null;
+  let memo=noBal.replace(/\(주\)|㈜/g,' ').replace(amtM[0],' ').replace(/(\d{1,2})\/(\d{1,2})/,' ').replace(/\d{1,2}:\d{2}/,' ')
+    .replace(/[\d*]{2,}(-[\d*]+)+/g,' ').replace(/농협|NH|국민|KB|신한|우리|하나|카카오뱅크|카카오|토스|기업|IBK|새마을|MG|우체국|수협|은행|뱅크|카드/gi,' ')
+    .replace(/출금|입금|이체|승인|결제|지급|체크|사용|취소|일시불|누적[\d,]*원?|[()\[\]]/g,' ').replace(/\s+/g,' ').trim().slice(0,20);
+  return {t:tp,a:amt,d,tm:tmM?`${pad(tmM[1])}:${tmM[2]}`:'',bal,acc,memo,bank,cancel,sig:`${d} ${tmM?tmM[0]:''} ${amt} ${bal??''}`};
+}
+function smsPreview(){
+  const r=smsCur=parseSMS($('smsText').value),el=$('smsPrev');
+  if(!$('smsText').value.trim()){el.innerHTML='';return}
+  if(!r){el.innerHTML='<p class="err">금액을 찾지 못했어요. 은행 문자 전체를 붙여넣었는지 확인해 주세요.</p>';return}
+  const key=r.d.slice(0,7),act=fixed.filter(f=>active(f,key)),bud=r.t==='e'?budgetOf({m:r.memo},[...act].sort((a,b)=>b.n.length-a.n.length),act.find(v=>v.n.includes('생활비'))):null;
+  const dup=data.some(x=>x.sms===r.sig);const [,mo,da]=r.d.split('-').map(Number);
+  el.innerHTML=`<div class="smsp"><b>${r.acc?esc(r.acc.n):'통장 없음'} · ${r.t==='i'?'입금':'출금'} ${won(r.a)}</b>
+    <span class="sub">${mo}월 ${da}일 ${r.tm}${r.memo?` · 메모: ${esc(r.memo)}`:''}${bud?` · ${esc(bud.n)} 예산`:''}</span>
+    ${r.cancel?'<span class="warnt">취소 문자예요. 저장하기 전에 확인해 주세요.</span>':''}
+    ${dup?'<span class="warnt">이미 등록한 문자예요. 또 저장하면 두 번 기록돼요.</span>':''}
+    ${!r.acc?'<span class="warnt">맞는 통장을 찾지 못했어요. "고쳐서 저장"으로 통장을 골라 주세요.</span>':''}
+    ${r.bal!=null&&r.acc?`<label class="chk"><input type="checkbox" id="smsBal" checked> 통장 잔액을 문자 잔액 ${won(r.bal)}으로 맞추기</label>`:''}
+    <div class="abtns"><button type="button" class="go" id="smsSave">이대로 저장</button><button type="button" class="go ghost" id="smsEdit">고쳐서 저장</button></div></div>`;
+}
+function smsOpen(o){$('smsW').hidden=!o;$('smsBtn').setAttribute('aria-expanded',o);$('smsBtn').textContent=o?'문자 입력 닫기':'은행 문자로 입력';if(o)$('smsText').focus({preventScroll:true})}
+const smsReset=()=>{$('smsText').value='';$('smsPrev').innerHTML='';smsCur=null;smsOpen(false)};
+$('smsBtn').addEventListener('click',()=>smsOpen($('smsW').hidden));
+$('smsText').addEventListener('input',smsPreview);
+$('smsClear').addEventListener('click',()=>{$('smsText').value='';smsPreview();$('smsText').focus()});
+if(!inFrame&&navigator.clipboard&&navigator.clipboard.readText)$('smsPaste').hidden=false;
+$('smsPaste').addEventListener('click',async()=>{try{$('smsText').value=await navigator.clipboard.readText();smsPreview()}catch(e){toast('붙여넣기 권한이 없어요. 칸을 길게 눌러 붙여넣어 주세요',false)}});
+$('smsPrev').addEventListener('click',e=>{
+  const r=smsCur;if(!r)return;const useBal=!!($('smsBal')&&$('smsBal').checked);
+  if(e.target.closest('#smsSave')){
+    if(!r.acc){toast('통장을 골라야 해요. 고쳐서 저장을 눌러 주세요',false);return}
+    const key=r.d.slice(0,7),act=fixed.filter(f=>active(f,key)),bud=r.t==='e'?budgetOf({m:r.memo},[...act].sort((a,b)=>b.n.length-a.n.length),act.find(v=>v.n.includes('생활비'))):null;
+    const item={id:Date.now(),t:r.t,a:r.a,c:r.t==='e'?(bud?bud.c:'기타'):(/급여|월급/.test(r.memo)?'급여':'기타'),m:r.memo,d:r.d,ac:r.acc.id,sms:r.sig};
+    data.push(item);applyTx(item,1);
+    if(useBal){r.acc.b=r.bal;r.acc.u=ymd(new Date())}
+    save();saveA();renderAccs();const dd=new Date(r.d);cur=new Date(dd.getFullYear(),dd.getMonth(),1);render();
+    toast(`저장했어요 · ${r.acc.n} 잔액 ${won(r.acc.b)}${bud?` · ${bud.n}에서 차감`:''}`,false);smsReset();return;
+  }
+  if(e.target.closest('#smsEdit')){
+    resetForm();setType(r.t);$('fDate').value=r.d;setMoney('fAmt',r.a);$('fMemo').value=r.memo;
+    if(r.acc){$('fAcc').value=String(r.acc.id);manualAcc=true}
+    smsPending={sig:r.sig,bal:r.bal,ac:r.acc?r.acc.id:0,useBal:useBal&&r.bal!=null};
+    memoHint();renderQM();smsReset();$('fAmt').focus();toast('내용을 확인하고 추가하기를 눌러 주세요',false);
+  }
+});
+// 다른 앱에서 '공유 → 가계부'로 문자를 보내면 열림
+{const sp=new URLSearchParams(location.search),st=[sp.get('title'),sp.get('text'),sp.get('url')].filter(Boolean).join(' ');
+ if(st){setTimeout(()=>{smsOpen(true);$('smsText').value=st;smsPreview();if(window.goPage)goPage(0,false);setTimeout(()=>$('smsW').scrollIntoView({block:'center'}),350)},0);try{history.replaceState(null,'',location.pathname)}catch(e){}}}
 
 setType('e');renderAccs();resetForm();resetX();render();
 }
