@@ -27,7 +27,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Schibsted Grotesk","Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
 .wrap{max-width:1100px;margin:0 auto;padding:clamp(16px,3vw,32px) max(4vw,14px)}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-h1{font-size:32px;line-height:1.05;margin:0;font-weight:800}
+h1{font-size:24px;line-height:1.05;margin:0;font-weight:800}
 .mon{display:flex;align-items:center;gap:6px}
 .mon b{font-size:18px;min-width:7.5em;text-align:center}
 button,input,select{font:inherit;font-size:16px;color:inherit}
@@ -175,10 +175,16 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .smsp .warnt{font-size:13px;color:var(--pkInk)}
 .smsp .abtns{margin-top:6px}.smsp .go{margin-top:0;height:44px}
 .go.ghost{background:transparent;color:inherit;border:2px solid var(--line)}
+.xhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.xhead h2{margin-top:4px}
+.photo{position:relative;flex:none}
+#phBtn{width:84px;height:84px;border-radius:16px;border:2px dashed var(--line);background:transparent;color:var(--sub);font:inherit;font-size:13px;cursor:pointer;padding:0;overflow:hidden;display:grid;place-items:center}
+#phBtn.has{border-style:solid}
+#phImg{width:100%;height:100%;object-fit:cover;display:block}
+.phx{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:16px;cursor:pointer;line-height:1}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
 .gear{display:grid;place-items:center;padding:0}.gear svg{width:22px;height:22px}
-@media(max-width:420px){header h1{font-size:26px}.mon b{min-width:6.2em;font-size:16px}.mon{gap:4px}}
+@media(max-width:420px){header h1{font-size:21px}.mon b{min-width:6.2em;font-size:16px}.mon{gap:4px}}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);border:2px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:14px}
 .tabs button{min-height:44px;border:0;background:transparent;color:var(--sub);font:inherit;font-weight:600;cursor:pointer;position:relative}
 .tabs button[aria-selected=true]{background:var(--ink);color:var(--bg)}
@@ -327,7 +333,9 @@ header h1{flex:1}
     <div class="page" role="tabpanel" aria-label="고정지출">
   <div class="fx">
     <form class="panel" id="xform" autocomplete="off">
-      <h2 id="xTitle">고정지출 추가</h2>
+      <div class="xhead"><h2 id="xTitle">고정지출 추가</h2>
+        <div class="photo"><button type="button" id="phBtn" aria-label="사진 바꾸기"><img id="phImg" alt="" hidden><span id="phPh">+ 사진</span></button><button type="button" class="phx" id="phDel" aria-label="사진 지우기" hidden>×</button><input type="file" id="phPick" accept="image/*" hidden></div>
+      </div>
       <label for="xName">항목명</label><input id="xName" type="text" maxlength="30" placeholder="예: 월세, 넷플릭스, 휴대폰 할부" required>
       <div class="two">
         <div><label for="xAmt">매월 금액 (원)</label><input id="xAmt" class="money" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="xAmtK"></span></div>
@@ -996,6 +1004,27 @@ $('smsPrev').addEventListener('click',e=>{
 // 다른 앱에서 '공유 → 가계부'로 문자를 보내면 열림
 {const sp=new URLSearchParams(location.search),st=[sp.get('title'),sp.get('text'),sp.get('url')].filter(Boolean).join(' ');
  if(st){setTimeout(()=>{smsOpen(true);$('smsText').value=st;smsPreview();if(window.goPage)goPage(0,false);setTimeout(()=>$('smsW').scrollIntoView({block:'center'}),350)},0);try{history.replaceState(null,'',location.pathname)}catch(e){}}}
+
+// ---- 고정지출 옆 사진 (이 기기에만 저장) ----
+const DEFAULT_PHOTO='';
+const PKEY='gagyebu.photo.v1';
+function renderPhoto(){
+  let ph=null;try{ph=localStorage.getItem(PKEY)}catch(e){}
+  const src=ph==='none'?'':(ph||DEFAULT_PHOTO);
+  $('phImg').hidden=!src;if(src)$('phImg').src=src;$('phPh').hidden=!!src;
+  $('phBtn').classList.toggle('has',!!src);$('phDel').hidden=!src;
+}
+$('phBtn').addEventListener('click',()=>$('phPick').click());
+$('phDel').addEventListener('click',()=>{try{localStorage.setItem(PKEY,'none')}catch(e){}renderPhoto();toast('사진을 지웠어요',false)});
+$('phPick').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>{
+    const S=240,c=document.createElement('canvas');c.width=c.height=S;const k=Math.min(img.width,img.height);
+    c.getContext('2d').drawImage(img,(img.width-k)/2,(img.height-k)/2,k,k,0,0,S,S);
+    try{localStorage.setItem(PKEY,c.toDataURL('image/jpeg',0.8));renderPhoto();toast('사진을 넣었어요',false)}catch(err){toast('사진을 저장하지 못했어요',false)}
+  };img.src=r.result};r.readAsDataURL(f);e.target.value='';
+});
+renderPhoto();
 
 setType('e');renderAccs();resetForm();resetX();render();
 }
