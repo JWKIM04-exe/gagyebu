@@ -214,6 +214,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
         <div><label for="aBal">현재 잔액 (원)</label><input id="aBal" class="money" data-neg="1" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="aBalK"></span></div>
         <div><label for="aMemo">메모</label><input id="aMemo" type="text" maxlength="40" placeholder="예: 카드값 빠져나가는 통장"></div>
       </div>
+      <label class="chk"><input type="checkbox" id="aDef"> 기본 통장으로 쓰기 (메모에 통장 이름이 없으면 여기서 빠져요)</label>
       <div class="abtns">
         <button class="go" type="submit" id="aBtn">계좌 추가</button>
         <button class="go" type="button" id="aCancel" style="background:transparent;color:inherit;border:2px solid var(--line)">취소</button>
@@ -354,7 +355,9 @@ let accs;
 try{accs=JSON.parse(localStorage.getItem(AKEY))}catch(e){}
 if(!Array.isArray(accs))accs=window.APP_EMPTY?[]:aSample;
 const saveA=()=>{try{localStorage.setItem(AKEY,JSON.stringify(accs))}catch(e){}};
-let aEdit=null,lastAcc='0';
+let aEdit=null,lastAcc='0',manualAcc=false;
+// 기본 통장: 직접 지정한 통장, 없으면 이름에 '농협'이 들어간 통장
+const defAcc=()=>accs.find(a=>a.def)||accs.find(a=>a.n.includes('농협'))||null;
 const accName=id=>(accs.find(a=>a.id===Number(id))||{}).n||'';
 // 내역이 통장 잔액에 주는 영향: sign=+1 반영, -1 취소
 function applyTx(x,sign){
@@ -386,13 +389,14 @@ function renderAccs(){
   $('aTot').textContent=(accs.reduce((s,a)=>s+a.b,0)<0?'−':'')+won(Math.abs(accs.reduce((s,a)=>s+a.b,0)));
   $('aList').innerHTML=accs.map(a=>{
     const [y,mo,d]=a.u.split('-').map(Number);
-    return `<div class="ac" role="button" tabindex="0" data-acc="${a.id}"><span class="k">${esc(a.k)}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span><span class="u">${y}.${mo}.${d} 기준</span>${a.m?`<span class="m">${esc(a.m)}</span>`:''}<button class="x" data-adel="${a.id}" aria-label="${esc(a.n)} 삭제">×</button></div>`;
+    return `<div class="ac" role="button" tabindex="0" data-acc="${a.id}"><span class="k">${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span><span class="u">${y}.${mo}.${d} 기준</span>${a.m?`<span class="m">${esc(a.m)}</span>`:''}<button class="x" data-adel="${a.id}" aria-label="${esc(a.n)} 삭제">×</button></div>`;
   }).join('')+`<button class="ac add" type="button" id="aAdd">+ 계좌 추가</button>`;
   fillAccSel();
 }
 function openA(a){
   aEdit=a?a.id:null;$('aform').reset();
   if(a){$('aName').value=a.n;$('aKind').value=a.k;setMoney('aBal',a.b);$('aMemo').value=a.m}
+  $('aDef').checked=!!a&&defAcc()===a;
   $('aTitle').textContent=a?'계좌 수정 · 잔액 업데이트':'계좌 추가';$('aBtn').textContent=a?'저장':'계좌 추가';
   $('aform').classList.add('open');$('aName').focus({preventScroll:true});
   $('aform').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -532,6 +536,7 @@ $('aform').addEventListener('submit',e=>{
   e.preventDefault();
   const b=money('aBal');if(!Number.isFinite(b))return;
   const item={id:aEdit||Date.now(),n:$('aName').value.trim(),k:$('aKind').value,b,m:$('aMemo').value.trim(),u:ymd(new Date())};
+  if($('aDef').checked){accs.forEach(a=>delete a.def);item.def=true}
   if(aEdit)accs=accs.map(a=>a.id===aEdit?item:a);else accs.push(item);
   saveA();closeA();renderAccs();
 });
@@ -571,7 +576,7 @@ $('xList').addEventListener('click',e=>{
 
 function resetForm(){
   editId=null;$('form').reset();$('fDate').value=ymd(today);
-  $('fAcc').value=accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0';
+  manualAcc=false;const da=defAcc();$('fAcc').value=da?String(da.id):(accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0');
   spN=3;spToggle();setTimeout(memoHint,0);
   $('formTitle').textContent='내역 추가';$('fBtn').textContent='추가하기';$('fCancel').style.display='none';
 }
@@ -626,8 +631,8 @@ function memoHint(){
   }
   el.textContent=parts.length?'→ '+parts.join(' · '):'';
 }
-$('fMemo').addEventListener('input',()=>{const a=type!=='t'&&accFromMemo($('fMemo').value);if(a)$('fAcc').value=String(a.id);memoHint()});
-$('fAcc').addEventListener('change',memoHint);$('fDate').addEventListener('change',memoHint);
+$('fMemo').addEventListener('input',()=>{if(type!=='t'){const a=accFromMemo($('fMemo').value)||(!manualAcc&&defAcc());if(a)$('fAcc').value=String(a.id)}memoHint()});
+$('fAcc').addEventListener('change',()=>{manualAcc=true;memoHint()});$('fDate').addEventListener('change',memoHint);
 $('fxSum').addEventListener('click',e=>{
   const rb=e.target.closest('[data-brf]');
   if(rb){
@@ -731,7 +736,7 @@ $('list').addEventListener('click',e=>{
   const fr=e.target.closest('[data-fid]');if(fr){editFixed(Number(fr.dataset.fid));return}
   const row=e.target.closest('.it');if(!row)return;
   const x=data.find(v=>v.id===Number(row.dataset.id));if(!x)return;
-  editId=x.id;setType(x.t);
+  editId=x.id;setType(x.t);manualAcc=true;
   $('fDate').value=x.d;
   if(x.sp){$('spOn').checked=true;spN=x.sp.n;setMoney('fAmt',x.sp.tot);spToggle();renderSpNames(x.sp.p.map(p=>p.nm));}
   else{$('spOn').checked=false;spN=3;setMoney('fAmt',x.a);spToggle()}
