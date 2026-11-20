@@ -188,6 +188,9 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .mc,.mcname{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 8px}
 .mcname{width:100%;text-align:center}.mcname::placeholder{color:light-dark(#1240e0,#9fb8ff);opacity:.9}
 .mamt{border-color:light-dark(#f1a3b5,#7a2b40)}
+.mhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 4px}.mhead label{margin:0}
+.mhint{font-size:12px;color:var(--sub);margin:-2px 0 4px}
+.csgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.csl{margin:0;font-size:13px}.csl input{margin-top:4px}.csl input:disabled{opacity:.6}
 .msum{text-align:right;font-weight:700;margin:2px 0 0;min-height:1.3em;font-variant-numeric:tabular-nums}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
@@ -280,11 +283,8 @@ header h1{flex:1}
       <label for="fDate">날짜</label><input id="fDate" type="date" required>
       <div id="singleAmtW"><label for="fAmt" id="fAmtL">금액 (원)</label><input id="fAmt" class="money" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="fAmtK"></span></div>
       <div id="multiW" hidden>
-        <label>금액 (원) · 쓴 칸에만 적으세요</label>
-        <div class="mrow"><span class="mc">식비</span><input id="mA0" class="money mamt" data-c="식비" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="식비 금액"></div>
-        <div class="mrow"><span class="mc">교통</span><input id="mA1" class="money mamt" data-c="교통" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="교통 금액"></div>
-        <div class="mrow"><span class="mc">저축</span><input id="mA2" class="money mamt" data-c="저축" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="저축 금액"></div>
-        <div class="mrow"><input id="mOtherName" class="mcname" type="text" maxlength="12" placeholder="기타" aria-label="기타 카테고리 이름 (직접 입력)"><input id="mA3" class="money mamt" data-c="기타" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="기타 금액"></div>
+        <div class="mhead"><label>금액 (원) · 쓴 칸에만 적으세요</label><button type="button" class="pay qplus" id="csOpen">카테고리 설정</button></div>
+        <div id="mRows"></div>
         <p class="msum" id="mSum"></p>
       </div>
 
@@ -410,6 +410,17 @@ header h1{flex:1}
   </section>
   </div>
 </div>
+<div class="sheet" id="catSet" hidden>
+  <div class="sheetin" role="dialog" aria-modal="true" aria-labelledby="csTitle">
+    <div class="sheeth"><b id="csTitle">카테고리 설정</b><button type="button" class="ib" id="csClose" aria-label="카테고리 설정 닫기">×</button></div>
+    <p class="note" style="margin-top:0">내역 추가의 금액 칸 이름을 원하는 대로 바꿀 수 있어요. 맨 아래 '기타' 칸은 입력할 때마다 원하는 카테고리를 직접 적을 수 있어요.</p>
+    <h3 class="bkh">지출 칸</h3><div class="csgrid" id="csE"></div>
+    <h3 class="bkh">수입 칸</h3><div class="csgrid" id="csI"></div>
+    <p class="err" id="csErr" role="alert"></p>
+    <button type="button" class="go" id="csSave">저장</button>
+    <button type="button" class="go ghost" id="csReset" style="margin-top:8px">처음 상태로 되돌리기</button>
+  </div>
+</div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="undo">되돌리기</button></div>
 
 <script>
@@ -516,27 +527,57 @@ const closeA=()=>{aEdit=null;$('aform').classList.remove('open')};
 let cur=new Date(today.getFullYear(),today.getMonth(),1);
 let type='e',editId=null,xEdit=null,lastDel=null,tTimer;
 
-// ---- 지출: 식비·교통·저축·기타 4칸 한 번에 입력 ----
-let forceSingle=false;
+// ---- 지출·수입: 4칸 한 번에 입력 (칸 이름은 카테고리 설정에서 바꿈) ----
+let forceSingle=false,rowsType=null;
+const RKEY='gagyebu.rows.v1',ROWS_DEF={e:['식비','교통','저축'],i:['급여','용돈','부수입']};
+let rowCats=JSON.parse(JSON.stringify(ROWS_DEF));
+try{const v=JSON.parse(localStorage.getItem(RKEY));if(v&&Array.isArray(v.e)&&Array.isArray(v.i))rowCats=v}catch(e){}
+const saveRows=()=>{try{localStorage.setItem(RKEY,JSON.stringify(rowCats))}catch(e){}};
+function renderRows(){
+  rowsType=type;const cs=rowCats[type]||[];
+  $('mRows').innerHTML=cs.map((c,i)=>`<div class="mrow"><span class="mc">${esc(c)}</span><input id="mA${i}" class="money mamt" data-c="${esc(c)}" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${esc(c)} 금액"></div>`).join('')+
+    `<div class="mrow"><input id="mOtherName" class="mcname" type="text" maxlength="12" placeholder="기타 ✎" aria-label="기타 카테고리 이름 직접 적기"><input id="mA${cs.length}" class="money mamt" data-c="기타" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="기타 금액"></div>
+     <p class="mhint">기타 칸은 왼쪽 파란 칸을 눌러 원하는 카테고리 이름을 적을 수 있어요.</p>`;
+  $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
+  mSum();
+}
 function amtMode(){
-  const multi=type==='e'&&!editId&&!$('spOn').checked&&!forceSingle;
+  const multi=(type==='e'||type==='i')&&!editId&&!(type==='e'&&$('spOn').checked)&&!forceSingle;
+  if(multi&&rowsType!==type)renderRows();
   $('multiW').hidden=!multi;$('singleAmtW').hidden=multi;$('fCatW').hidden=multi||type==='t';$('fAmt').required=!multi;
   return multi;
 }
 function mSum(){const t=[...document.querySelectorAll('.mamt')].reduce((s,el)=>s+(money(el.id)||0),0);$('mSum').textContent=t?`합계 ${won(t)}`:''}
-document.querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',mSum));
 function multiSubmit(){
   const rows=[...document.querySelectorAll('.mamt')].map(el=>({c:el.dataset.c==='기타'?($('mOtherName').value.trim()||'기타'):el.dataset.c,a:money(el.id)})).filter(r=>r.a>0);
   if(!rows.length){$('fErr').textContent='금액을 한 칸 이상 적어 주세요.';return}
   $('fErr').textContent='';
-  const ac=Number($('fAcc').value)||0,m=$('fMemo').value.trim(),d=$('fDate').value,now=Date.now();let r=null;
-  rows.forEach((x,i)=>{const item={id:now+i,t:'e',a:x.a,c:x.c,m,d,ac};data.push(item);r=applyTx(item,1)||r});
+  const tp=type,ac=Number($('fAcc').value)||0,m=$('fMemo').value.trim(),d=$('fDate').value,now=Date.now();let r=null;
+  rows.forEach((x,i)=>{const item={id:now+i,t:tp,a:x.a,c:x.c,m,d,ac};data.push(item);r=applyTx(item,1)||r});
   const tot=rows.reduce((s,x)=>s+x.a,0);
   lastAcc=String(ac);save();saveA();renderAccs();
-  toast(`${rows.length}건 저장 · 합계 ${won(tot)}${r?` · ${r.a.n} 잔액 ${won(r.a.b)}`:''}`,false);
+  toast(`${tp==='i'?'수입':'지출'} ${rows.length}건 저장 · 합계 ${won(tot)}${r?` · ${r.a.n} 잔액 ${won(r.a.b)}`:''}`,false);
   const dd=new Date(d);cur=new Date(dd.getFullYear(),dd.getMonth(),1);
-  resetForm();setType(type);render();
+  resetForm();rowsType=null;setType(tp);render();
 }
+// 카테고리 설정 창
+function csFill(){
+  const f=(t,id)=>{$(id).innerHTML=rowCats[t].map((c,i)=>`<label class="csl">${i+1}번 칸<input type="text" maxlength="10" value="${esc(c)}" data-t="${t}" data-i="${i}"></label>`).join('')+'<label class="csl">4번 칸<input type="text" value="기타 (직접 적기)" disabled></label>'};
+  f('e','csE');f('i','csI');$('csErr').textContent='';
+}
+const csShow=o=>{$('catSet').hidden=!o;document.body.style.overflow=o?'hidden':'';if(o){csFill();$('csClose').focus()}};
+$('csOpen').addEventListener('click',()=>csShow(true));
+$('csClose').addEventListener('click',()=>csShow(false));
+$('catSet').addEventListener('click',e=>{if(e.target===$('catSet'))csShow(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('catSet').hidden)csShow(false)});
+$('csSave').addEventListener('click',()=>{
+  const nx={e:[],i:[]};let bad='';
+  $('catSet').querySelectorAll('input[data-t]').forEach(el=>{const v=el.value.trim();if(!v)bad='칸 이름을 비울 수 없어요.';if(v==='기타')bad="'기타'는 4번 칸에 이미 있어요. 다른 이름을 적어 주세요.";nx[el.dataset.t][Number(el.dataset.i)]=v});
+  ['e','i'].forEach(t=>{if(new Set(nx[t]).size!==nx[t].length)bad='같은 이름이 두 번 들어갔어요.'});
+  if(bad){$('csErr').textContent=bad;return}
+  rowCats=nx;saveRows();rowsType=null;amtMode();setType(type);csShow(false);toast('카테고리 칸을 바꿨어요',false);
+});
+$('csReset').addEventListener('click',()=>{rowCats=JSON.parse(JSON.stringify(ROWS_DEF));saveRows();rowsType=null;amtMode();setType(type);csFill();toast('처음 상태로 되돌렸어요',false)});
 function catToggle(){const o=$('fCat').value==='기타';$('fCatC').hidden=!o;if(!o)$('fCatC').value=''}
 const catVal=()=>$('fCat').value==='기타'?($('fCatC').value.trim()||'기타'):$('fCat').value;
 function setCat(c){if([...$('fCat').options].some(o=>o.value===c&&c!=='기타')){$('fCat').value=c;catToggle()}else{$('fCat').value='기타';catToggle();$('fCatC').value=c==='기타'?'':c}}
@@ -545,7 +586,7 @@ function setType(t){
   type=t;
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
   // 기본 카테고리 + 내가 직접 적어서 쓴 카테고리 + 기타(직접 입력)
-  const base=CATS[t].filter(c=>c!=='기타'),mine=t==='t'?[]:[...new Set(data.filter(x=>x.t===t&&x.c&&!CATS[t].includes(x.c)).map(x=>x.c))];
+  const base=[...new Set([...((typeof rowCats!=='undefined'&&rowCats[t])||[]),...CATS[t].filter(c=>c!=='기타')])],mine=t==='t'?[]:[...new Set(data.filter(x=>x.t===t&&x.c&&!CATS[t].includes(x.c)).map(x=>x.c))];
   $('fCat').innerHTML=[...base,...mine].map(c=>`<option>${esc(c)}</option>`).join('')+(CATS[t].includes('기타')?'<option value="기타">기타 (직접 입력)</option>':'');
   catToggle();
   const tr=t==='t';
@@ -862,7 +903,7 @@ $('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(!b
 
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
-  if(type==='e'&&!$('multiW').hidden){multiSubmit();return}
+  if(type!=='t'&&!$('multiW').hidden){multiSubmit();return}
   const a=money('fAmt');if(!a||a<1)return;
   const ac=Number($('fAcc').value)||0,to=Number($('fTo').value)||0;
   if(type==='t'){
@@ -928,7 +969,7 @@ $('undo').addEventListener('click',()=>{
 
 // ---- 백업 / 복원 ----
 let bkArm=false;
-const bkCode=()=>JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick,qhide});
+const bkCode=()=>JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick,qhide,rows:rowCats});
 const inFrame=(()=>{try{return window.self!==window.top}catch(e){return true}})();
 if(!inFrame&&navigator.share)$('bkShare').hidden=false;
 if(!inFrame)$('bkFile').hidden=false;
@@ -954,7 +995,7 @@ $('bkLoad').addEventListener('click',()=>{
   if(!o||o.app!=='gagyebu'||!Array.isArray(o.data)||!Array.isArray(o.fixed)||!Array.isArray(o.accs)){$('bkErr').textContent='백업 코드가 올바르지 않아요. 처음부터 끝까지 전부 붙여넣었는지 확인해 주세요.';return}
   if(!bkArm){bkArm=true;$('bkLoad').textContent='지금 데이터를 덮어써요. 한 번 더 누르면 불러와요';$('bkErr').textContent='';setTimeout(()=>{bkArm=false;$('bkLoad').textContent='붙여넣은 백업 불러오기'},6000);return}
   bkArm=false;$('bkLoad').textContent='붙여넣은 백업 불러오기';
-  data=o.data;fixed=o.fixed;accs=o.accs;save();saveF();saveA();if(Array.isArray(o.quick)){quick=o.quick;qhide=Array.isArray(o.qhide)?o.qhide:[];saveQ()}
+  data=o.data;fixed=o.fixed;accs=o.accs;save();saveF();saveA();if(Array.isArray(o.quick)){quick=o.quick;qhide=Array.isArray(o.qhide)?o.qhide:[];saveQ()}if(o.rows&&Array.isArray(o.rows.e)&&Array.isArray(o.rows.i)){rowCats=o.rows;saveRows();rowsType=null}
   $('bkText').value='';renderAccs();resetForm();resetX();render();
   toast(`불러왔어요 · 내역 ${data.length}건, 고정지출 ${fixed.length}개, 계좌 ${accs.length}개`,false);
 });
