@@ -126,7 +126,7 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 .bbar{grid-column:1/-1;height:5px;border-radius:3px;background:light-dark(#f1f1f1,#173026);overflow:hidden}.bbar i{display:block;height:100%;background:var(--em);border-radius:4px;transition:width .4s}
 .bs{grid-column:1/-1;font-size:11px;color:var(--sub);margin:0}
 .qm{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.qm[hidden]{display:none}
-.pay.mine{border-color:var(--emInk);color:var(--emInk);font-weight:600}.pay.qplus{border-style:dashed;color:var(--sub)}.pay.qdel{border-color:var(--pkInk);color:var(--pkInk)}
+.pay.mine{border-color:var(--emInk);color:var(--emInk);font-weight:600}.pay.qplus{border-style:dashed;color:var(--sub)}.pay.qdel{border-color:var(--pkInk);color:var(--pkInk)}.pay.qplus.on{background:var(--ink);color:var(--bg);border-style:solid}.qtip{flex-basis:100%;font-size:13px;color:var(--pkInk)}
 .qadd{display:flex;gap:6px;flex-basis:100%}.qadd input{flex:1;height:40px}
 [hidden]{display:none!important}
 .bbar{justify-self:stretch;width:100%}
@@ -753,19 +753,21 @@ $('cGrid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');i
 $('cDet').addEventListener('click',e=>{if(e.target.closest('#cAdd')&&selDay){resetForm();$('fDate').value=selDay;$('form').scrollIntoView({behavior:'smooth',block:'start'});$('fAmt').focus({preventScroll:true})}});
 
 // ---- 메모 빠른 입력: 내가 추가한 말 + 고정지출 이름 ----
-const QKEY='gagyebu.quick.v1';let quick=[],qmEdit=false,qmAdding=false;
+const QKEY='gagyebu.quick.v1',HKEY='gagyebu.quickhide.v1';let quick=[],qhide=[],qmEdit=false,qmAdding=false;
 try{quick=JSON.parse(localStorage.getItem(QKEY))||[]}catch(e){}
-if(!Array.isArray(quick))quick=[];
-const saveQ=()=>{try{localStorage.setItem(QKEY,JSON.stringify(quick))}catch(e){}};
+try{qhide=JSON.parse(localStorage.getItem(HKEY))||[]}catch(e){}
+if(!Array.isArray(quick))quick=[];if(!Array.isArray(qhide))qhide=[];
+const saveQ=()=>{try{localStorage.setItem(QKEY,JSON.stringify(quick));localStorage.setItem(HKEY,JSON.stringify(qhide))}catch(e){}};
 function renderQM(){
   const el=$('qm');if(!el)return;
   if(type==='t'){el.hidden=true;return}el.hidden=false;
   const key=($('fDate').value||ymd(today)).slice(0,7);
-  const fx=type==='e'?fixed.filter(f=>active(f,key)).map(f=>f.n).filter(n=>!quick.includes(n)):[];
-  el.innerHTML=quick.map((w,i)=>qmEdit?`<button type="button" class="pay qdel" data-qdel="${i}" aria-label="${esc(w)} 지우기">${esc(w)} ×</button>`:`<button type="button" class="pay mine" data-qm="${esc(w)}">${esc(w)}</button>`).join('')+
-    (qmEdit?'':fx.map(n=>`<button type="button" class="pay" data-qm="${esc(n)}">${esc(n)}</button>`).join(''))+
+  const fx=type==='e'?fixed.filter(f=>active(f,key)).map(f=>f.n).filter(n=>!quick.includes(n)&&!qhide.includes(n)):[];
+  el.innerHTML=(qmEdit?'<span class="qtip">지울 버튼을 누르세요</span>':'')+quick.map((w,i)=>qmEdit?`<button type="button" class="pay qdel" data-qdel="${i}" aria-label="${esc(w)} 지우기">${esc(w)} ×</button>`:`<button type="button" class="pay mine" data-qm="${esc(w)}">${esc(w)}</button>`).join('')+
+    fx.map(n=>qmEdit?`<button type="button" class="pay qdel" data-qhide="${esc(n)}" aria-label="${esc(n)} 지우기">${esc(n)} ×</button>`:`<button type="button" class="pay" data-qm="${esc(n)}">${esc(n)}</button>`).join('')+
+    (qmEdit&&qhide.length?`<button type="button" class="pay qplus" id="qmRestore">지운 고정지출 버튼 되살리기 (${qhide.length})</button>`:'')+
     (qmAdding?`<span class="qadd"><input id="qmIn" type="text" maxlength="15" placeholder="자주 쓰는 말 (예: 점심)" aria-label="추가할 말"><button type="button" class="pay mine" id="qmSave">추가</button><button type="button" class="pay" id="qmCancel">취소</button></span>`
-      :`<button type="button" class="pay qplus" id="qmPlus">+ 직접 추가</button>${quick.length?`<button type="button" class="pay qplus" id="qmEditBtn">${qmEdit?'완료':'편집'}</button>`:''}`);
+      :`${qmEdit?'':'<button type="button" class="pay qplus" id="qmPlus">+ 직접 추가</button>'}<button type="button" class="pay qplus${qmEdit?' on':''}" id="qmEditBtn">${qmEdit?'완료':'− 지우기'}</button>`);
   if(qmAdding){const i=$('qmIn');i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('qmSave').click()}})}
 }
 $('qm').addEventListener('click',e=>{
@@ -773,7 +775,9 @@ $('qm').addEventListener('click',e=>{
   if(e.target.closest('#qmCancel')){qmAdding=false;renderQM();return}
   if(e.target.closest('#qmSave')){const w=$('qmIn').value.trim();if(w&&!quick.includes(w)){quick.push(w);saveQ()}qmAdding=false;renderQM();if(w)toast(`'${w}' 버튼을 추가했어요`,false);return}
   if(e.target.closest('#qmEditBtn')){qmEdit=!qmEdit;renderQM();return}
-  const d=e.target.closest('[data-qdel]');if(d){const w=quick[Number(d.dataset.qdel)];quick.splice(Number(d.dataset.qdel),1);saveQ();if(!quick.length)qmEdit=false;renderQM();toast(`'${w}' 버튼을 지웠어요`,false);return}
+  if(e.target.closest('#qmRestore')){qhide=[];saveQ();renderQM();toast('고정지출 버튼을 다시 보이게 했어요',false);return}
+  const h=e.target.closest('[data-qhide]');if(h){qhide.push(h.dataset.qhide);saveQ();renderQM();toast(`'${h.dataset.qhide}' 버튼을 지웠어요`,false);return}
+  const d=e.target.closest('[data-qdel]');if(d){const w=quick[Number(d.dataset.qdel)];quick.splice(Number(d.dataset.qdel),1);saveQ();renderQM();toast(`'${w}' 버튼을 지웠어요`,false);return}
 });
 $('fDate').addEventListener('change',renderQM);
 $('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(!b)return;const m=$('fMemo').value.trim(),n=b.dataset.qm;$('fMemo').value=m&&!memoHas(m,n)?m+' '+n:(m||n);$('fMemo').dispatchEvent(new Event('input'));$('fMemo').focus()});
@@ -844,7 +848,7 @@ $('undo').addEventListener('click',()=>{
 // ---- 백업 / 복원 ----
 let bkArm=false;
 $('bkCopy').addEventListener('click',async()=>{
-  const code=JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick});
+  const code=JSON.stringify({app:'gagyebu',v:1,at:new Date().toISOString(),data,fixed,accs,quick,qhide});
   $('bkText').value=code;$('bkErr').textContent='';
   try{await navigator.clipboard.writeText(code);toast('백업 코드를 복사했어요',false)}
   catch(e){$('bkText').focus();$('bkText').select();toast('아래 칸의 글자를 전체 선택해 복사해 주세요',false)}
@@ -854,7 +858,7 @@ $('bkLoad').addEventListener('click',()=>{
   if(!o||o.app!=='gagyebu'||!Array.isArray(o.data)||!Array.isArray(o.fixed)||!Array.isArray(o.accs)){$('bkErr').textContent='백업 코드가 올바르지 않아요. 처음부터 끝까지 전부 붙여넣었는지 확인해 주세요.';return}
   if(!bkArm){bkArm=true;$('bkLoad').textContent='지금 데이터를 덮어써요. 한 번 더 누르면 불러와요';$('bkErr').textContent='';setTimeout(()=>{bkArm=false;$('bkLoad').textContent='붙여넣은 백업 불러오기'},6000);return}
   bkArm=false;$('bkLoad').textContent='붙여넣은 백업 불러오기';
-  data=o.data;fixed=o.fixed;accs=o.accs;save();saveF();saveA();if(Array.isArray(o.quick)){quick=o.quick;saveQ()}
+  data=o.data;fixed=o.fixed;accs=o.accs;save();saveF();saveA();if(Array.isArray(o.quick)){quick=o.quick;qhide=Array.isArray(o.qhide)?o.qhide:[];saveQ()}
   $('bkText').value='';renderAccs();resetForm();resetX();render();
   toast(`불러왔어요 · 내역 ${data.length}건, 고정지출 ${fixed.length}개, 계좌 ${accs.length}개`,false);
 });
