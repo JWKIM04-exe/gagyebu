@@ -184,13 +184,14 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .xbg-b.on::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 0,transparent 150px,color-mix(in srgb,var(--card) 50%,transparent) 230px,color-mix(in srgb,var(--card) 85%,transparent) 300px,var(--card) min(360px,92vw))}
 .xbg-b.on h2,.xbg-b.on .day span{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
 .xbg h2,.xbg label{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent),0 0 2px color-mix(in srgb,var(--card) 80%,transparent)}
-.mrow{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
+.mrow{display:grid;grid-template-columns:8em minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
 .mc,.mcname{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 8px}
-.mcname{width:100%;text-align:center}.mcname::placeholder{color:light-dark(#1240e0,#9fb8ff);opacity:.9}
+.mcsel{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;padding:0 6px}
+.mcn{grid-column:1/-1;justify-content:flex-start;text-align:left;font-weight:600}
+.mcname{width:100%;text-align:center}.mcname.mcn{text-align:left;padding:0 12px}.mcname::placeholder{color:light-dark(#1240e0,#9fb8ff);opacity:.9}
 .mamt{border-color:light-dark(#f1a3b5,#7a2b40)}
 .mhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 4px}.mhead label{margin:0}
 .mhint{font-size:12px;color:var(--sub);margin:-2px 0 4px}
-.csgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.csl{margin:0;font-size:13px}.csl input{margin-top:4px}.csl input:disabled{opacity:.6}
 .msum{text-align:right;font-weight:700;margin:2px 0 0;min-height:1.3em;font-variant-numeric:tabular-nums}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
@@ -283,7 +284,7 @@ header h1{flex:1}
       <label for="fDate">날짜</label><input id="fDate" type="date" required>
       <div id="singleAmtW"><label for="fAmt" id="fAmtL">금액 (원)</label><input id="fAmt" class="money" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="fAmtK"></span></div>
       <div id="multiW" hidden>
-        <div class="mhead"><label>금액 (원) · 쓴 칸에만 적으세요</label><button type="button" class="pay qplus" id="csOpen">카테고리 설정</button></div>
+        <div class="mhead"><label>카테고리 · 금액 (원)</label><span class="mhint" style="margin:0">쓴 칸에만 적으세요</span></div>
         <div id="mRows"></div>
         <p class="msum" id="mSum"></p>
       </div>
@@ -410,17 +411,6 @@ header h1{flex:1}
   </section>
   </div>
 </div>
-<div class="sheet" id="catSet" hidden>
-  <div class="sheetin" role="dialog" aria-modal="true" aria-labelledby="csTitle">
-    <div class="sheeth"><b id="csTitle">카테고리 설정</b><button type="button" class="ib" id="csClose" aria-label="카테고리 설정 닫기">×</button></div>
-    <p class="note" style="margin-top:0">내역 추가의 금액 칸 이름을 원하는 대로 바꿀 수 있어요. 맨 아래 '기타' 칸은 입력할 때마다 원하는 카테고리를 직접 적을 수 있어요.</p>
-    <h3 class="bkh">지출 칸</h3><div class="csgrid" id="csE"></div>
-    <h3 class="bkh">수입 칸</h3><div class="csgrid" id="csI"></div>
-    <p class="err" id="csErr" role="alert"></p>
-    <button type="button" class="go" id="csSave">저장</button>
-    <button type="button" class="go ghost" id="csReset" style="margin-top:8px">처음 상태로 되돌리기</button>
-  </div>
-</div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="undo">되돌리기</button></div>
 
 <script>
@@ -533,12 +523,15 @@ const RKEY='gagyebu.rows.v1',ROWS_DEF={e:['식비','교통','저축'],i:['급여
 let rowCats=JSON.parse(JSON.stringify(ROWS_DEF));
 try{const v=JSON.parse(localStorage.getItem(RKEY));if(v&&Array.isArray(v.e)&&Array.isArray(v.i))rowCats=v}catch(e){}
 const saveRows=()=>{try{localStorage.setItem(RKEY,JSON.stringify(rowCats))}catch(e){}};
+function rowOpts(t,sel){
+  const base=[...new Set([...CATS[t].filter(c=>c!=='기타'),...(rowCats[t]||[]),...data.filter(x=>x.t===t&&x.c&&x.c!=='기타'&&!CATS[t].includes(x.c)).map(x=>x.c)])];
+  return base.map(c=>`<option${c===sel?' selected':''}>${esc(c)}</option>`).join('')+`<option value="기타"${sel==='기타'?' selected':''}>기타 ✎</option>`;
+}
 function renderRows(){
-  rowsType=type;const cs=rowCats[type]||[];
-  $('mRows').innerHTML=cs.map((c,i)=>`<div class="mrow"><span class="mc">${esc(c)}</span><input id="mA${i}" class="money mamt" data-c="${esc(c)}" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${esc(c)} 금액"></div>`).join('')+
-    `<div class="mrow"><input id="mOtherName" class="mcname" type="text" maxlength="12" placeholder="기타 ✎" aria-label="기타 카테고리 이름 직접 적기"><input id="mA${cs.length}" class="money mamt" data-c="기타" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="기타 금액"></div>
-     <p class="mhint">기타 칸은 왼쪽 파란 칸을 눌러 원하는 카테고리 이름을 적을 수 있어요.</p>`;
+  rowsType=type;const defs=[...(rowCats[type]||[]).slice(0,3),'기타'];
+  $('mRows').innerHTML=defs.map((c,i)=>`<div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,c)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"><input id="mN${i}" class="mcname mcn" type="text" maxlength="12" placeholder="카테고리 이름 직접 적기 (예: 경조사)" aria-label="${i+1}번 칸 카테고리 직접 입력"${c==='기타'?'':' hidden'}></div>`).join('');
   $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
+  $('mRows').querySelectorAll('.mcsel').forEach((el,i)=>el.addEventListener('change',()=>{const o=el.value==='기타';$('mN'+i).hidden=!o;if(o)$('mN'+i).focus();else $('mN'+i).value=''}));
   mSum();
 }
 function amtMode(){
@@ -549,7 +542,7 @@ function amtMode(){
 }
 function mSum(){const t=[...document.querySelectorAll('.mamt')].reduce((s,el)=>s+(money(el.id)||0),0);$('mSum').textContent=t?`합계 ${won(t)}`:''}
 function multiSubmit(){
-  const rows=[...document.querySelectorAll('.mamt')].map(el=>({c:el.dataset.c==='기타'?($('mOtherName').value.trim()||'기타'):el.dataset.c,a:money(el.id)})).filter(r=>r.a>0);
+  const rows=[...document.querySelectorAll('.mamt')].map((el,i)=>{const sv=$('mC'+i).value;return {c:sv==='기타'?($('mN'+i).value.trim()||'기타'):sv,a:money(el.id)}}).filter(r=>r.a>0);
   if(!rows.length){$('fErr').textContent='금액을 한 칸 이상 적어 주세요.';return}
   $('fErr').textContent='';
   const tp=type,ac=Number($('fAcc').value)||0,m=$('fMemo').value.trim(),d=$('fDate').value,now=Date.now();let r=null;
@@ -560,24 +553,6 @@ function multiSubmit(){
   const dd=new Date(d);cur=new Date(dd.getFullYear(),dd.getMonth(),1);
   resetForm();rowsType=null;setType(tp);render();
 }
-// 카테고리 설정 창
-function csFill(){
-  const f=(t,id)=>{$(id).innerHTML=rowCats[t].map((c,i)=>`<label class="csl">${i+1}번 칸<input type="text" maxlength="10" value="${esc(c)}" data-t="${t}" data-i="${i}"></label>`).join('')+'<label class="csl">4번 칸<input type="text" value="기타 (직접 적기)" disabled></label>'};
-  f('e','csE');f('i','csI');$('csErr').textContent='';
-}
-const csShow=o=>{$('catSet').hidden=!o;document.body.style.overflow=o?'hidden':'';if(o){csFill();$('csClose').focus()}};
-$('csOpen').addEventListener('click',()=>csShow(true));
-$('csClose').addEventListener('click',()=>csShow(false));
-$('catSet').addEventListener('click',e=>{if(e.target===$('catSet'))csShow(false)});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('catSet').hidden)csShow(false)});
-$('csSave').addEventListener('click',()=>{
-  const nx={e:[],i:[]};let bad='';
-  $('catSet').querySelectorAll('input[data-t]').forEach(el=>{const v=el.value.trim();if(!v)bad='칸 이름을 비울 수 없어요.';if(v==='기타')bad="'기타'는 4번 칸에 이미 있어요. 다른 이름을 적어 주세요.";nx[el.dataset.t][Number(el.dataset.i)]=v});
-  ['e','i'].forEach(t=>{if(new Set(nx[t]).size!==nx[t].length)bad='같은 이름이 두 번 들어갔어요.'});
-  if(bad){$('csErr').textContent=bad;return}
-  rowCats=nx;saveRows();rowsType=null;amtMode();setType(type);csShow(false);toast('카테고리 칸을 바꿨어요',false);
-});
-$('csReset').addEventListener('click',()=>{rowCats=JSON.parse(JSON.stringify(ROWS_DEF));saveRows();rowsType=null;amtMode();setType(type);csFill();toast('처음 상태로 되돌렸어요',false)});
 function catToggle(){const o=$('fCat').value==='기타';$('fCatC').hidden=!o;if(!o)$('fCatC').value=''}
 const catVal=()=>$('fCat').value==='기타'?($('fCatC').value.trim()||'기타'):$('fCat').value;
 function setCat(c){if([...$('fCat').options].some(o=>o.value===c&&c!=='기타')){$('fCat').value=c;catToggle()}else{$('fCat').value='기타';catToggle();$('fCatC').value=c==='기타'?'':c}}
@@ -760,7 +735,7 @@ $('xList').addEventListener('click',e=>{
 
 function resetForm(){
   editId=null;$('form').reset();$('fDate').value=ymd(today);
-  smsPending=null;forceSingle=false;document.querySelectorAll('.mamt').forEach(el=>el.value='');if($('mOtherName'))$('mOtherName').value='';if($('mSum'))$('mSum').textContent='';manualAcc=false;const da=defAcc();$('fAcc').value=da?String(da.id):(accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0');
+  smsPending=null;forceSingle=false;document.querySelectorAll('.mamt').forEach(el=>el.value='');rowsType=null;if($('mSum'))$('mSum').textContent='';manualAcc=false;const da=defAcc();$('fAcc').value=da?String(da.id):(accs.some(a=>String(a.id)===lastAcc)?lastAcc:'0');
   spN=3;spToggle();setTimeout(memoHint,0);
   $('formTitle').textContent='내역 추가';$('fBtn').textContent='추가하기';$('fCancel').style.display='none';
 }
