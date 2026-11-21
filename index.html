@@ -210,6 +210,9 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .thumb{position:relative;display:inline-block}.thumb img{width:72px;height:72px;object-fit:cover;border-radius:10px;display:block;border:2px solid var(--line)}
 .thumb button{position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);cursor:pointer}
 .dimg{width:100%;border-radius:12px;margin-top:12px;display:block}
+.payw{margin-top:8px}.payn::-webkit-calendar-picker-indicator{display:none!important}.payn{padding:0 10px}
+.payrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 44px;gap:6px;align-items:center;margin-bottom:6px}
+.pays{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--sub);margin-top:6px}.pays b{color:var(--ink);font-weight:700}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
 .gear{display:grid;place-items:center;padding:0}.gear svg{width:22px;height:22px}
@@ -357,6 +360,12 @@ header h1{flex:1}
         <div><label for="aBal">현재 잔액 (원)</label><input id="aBal" class="money" data-neg="1" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required><span class="kr" id="aBalK"></span></div>
         <div><label for="aMemo">메모</label><input id="aMemo" type="text" maxlength="40" placeholder="예: 카드값 빠져나가는 통장"></div>
       </div>
+      <div class="payw">
+        <label>연결해서 쓰는 페이 잔액 <span class="dsub">(네이버페이·카카오페이 등)</span></label>
+        <div id="aPays"></div>
+        <div class="bkrow" id="aPayQuick"></div>
+      </div>
+      <datalist id="payNames"><option>네이버페이</option><option>카카오페이</option><option>토스페이</option><option>페이코</option><option>삼성페이</option><option>쿠팡페이</option></datalist>
       <label class="chk"><input type="checkbox" id="aDef"> 기본 통장으로 쓰기 (메모에 통장 이름이 없으면 여기서 빠져요)</label>
       <div class="abtns">
         <button class="go" type="submit" id="aBtn">계좌 추가</button>
@@ -540,18 +549,37 @@ function fillAccSel(){
 }
 
 function renderAccs(){
-  $('aTot').textContent=(accs.reduce((s,a)=>s+a.b,0)<0?'−':'')+won(Math.abs(accs.reduce((s,a)=>s+a.b,0)));
+  const totAll=accs.reduce((s,a)=>s+a.b+paySum(a),0);$('aTot').textContent=(totAll<0?'−':'')+won(Math.abs(totAll));
   $('aSort').setAttribute('aria-pressed',sortMode);$('aSort').textContent=sortMode?'완료':'순서 바꾸기';
   $('aList').innerHTML=accs.map((a,i)=>{
     const [y,mo,d]=a.u.split('-').map(Number);
     const mv=sortMode?`<div class="mv"><button type="button" data-mv="${a.id}:-1" ${i===0?'disabled':''} aria-label="${esc(a.n)} 위로">▲ 위로</button><button type="button" data-mv="${a.id}:1" ${i===accs.length-1?'disabled':''} aria-label="${esc(a.n)} 아래로">▼ 아래로</button></div>`:`<button class="x" data-adel="${a.id}" aria-label="${esc(a.n)} 삭제">×</button>`;
-    return `<div class="ac${sortMode?' sorting':''}" ${sortMode?'':'role="button" tabindex="0"'} data-acc="${a.id}"><span class="k">${sortMode?`${i+1}번 · `:''}${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span>${sortMode?'':`<span class="u">${y}.${mo}.${d} 기준</span>${a.m?`<span class="m">${esc(a.m)}</span>`:''}`}${mv}</div>`;
+    return `<div class="ac${sortMode?' sorting':''}" ${sortMode?'':'role="button" tabindex="0"'} data-acc="${a.id}"><span class="k">${sortMode?`${i+1}번 · `:''}${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span>${sortMode?'':`<span class="u">${y}.${mo}.${d} 기준</span>${paySum(a)?`<span class="pays">${a.pays.filter(p=>p.b).map(p=>`<span>${esc(p.n)} <b class="num">${won(p.b)}</b></span>`).join('')}</span>`:''}${a.m?`<span class="m">${esc(a.m)}</span>`:''}`}${mv}</div>`;
   }).join('')+(sortMode?'':`<button class="ac add" type="button" id="aAdd">+ 계좌 추가</button>`);
   fillAccSel();
 }
+// ---- 계좌에 연결해서 쓰는 페이 잔액 ----
+const paySum=a=>(Array.isArray(a.pays)?a.pays:[]).reduce((s,p)=>s+(Number(p.b)||0),0);
+const PAY_SUGG=['네이버페이','카카오페이','토스페이'];
+function renderPayRows(list){
+  $('aPays').innerHTML=list.map((p,i)=>`<div class="payrow"><input class="payn" list="payNames" maxlength="12" placeholder="페이 이름" value="${esc(p.n)}" aria-label="페이 이름"><input id="aPayB${i}" class="money payb" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="페이 잔액"><button type="button" class="x" data-payrm="${i}" aria-label="이 페이 지우기">×</button></div>`).join('');
+  list.forEach((p,i)=>{if(p.b)setMoney('aPayB'+i,p.b)});
+  $('aPays').querySelectorAll('.payb').forEach(el=>el.addEventListener('input',()=>fmtMoneyEl(el)));
+  const have=list.map(p=>p.n);
+  $('aPayQuick').innerHTML=PAY_SUGG.filter(n=>!have.includes(n)).map(n=>`<button type="button" class="pay qplus" data-payadd="${n}">+ ${n}</button>`).join('')+'<button type="button" class="pay qplus" data-payadd="">+ 다른 페이</button>';
+}
+const readPayRows=()=>[...$('aPays').querySelectorAll('.payrow')].map(r=>({n:r.querySelector('.payn').value.trim(),b:money(r.querySelector('.payb').id)||0})).filter(p=>p.n);
+$('aform').addEventListener('click',e=>{
+  const ad=e.target.closest('[data-payadd]'),rm=e.target.closest('[data-payrm]');if(!ad&&!rm)return;
+  const cur=[...$('aPays').querySelectorAll('.payrow')].map(r=>({n:r.querySelector('.payn').value.trim(),b:money(r.querySelector('.payb').id)||0}));
+  if(ad)cur.push({n:ad.dataset.payadd,b:0});else cur.splice(Number(rm.dataset.payrm),1);
+  renderPayRows(cur);
+  if(ad){const rows=$('aPays').querySelectorAll('.payrow'),last=rows[rows.length-1];(ad.dataset.payadd?last.querySelector('.payb'):last.querySelector('.payn')).focus()}
+});
 function openA(a){
   aEdit=a?a.id:null;$('aform').reset();
   if(a){$('aName').value=a.n;$('aKind').value=a.k;setMoney('aBal',a.b);$('aMemo').value=a.m}
+  renderPayRows(a&&Array.isArray(a.pays)?a.pays:[]);
   $('aDef').checked=!!a&&defAcc()===a;
   $('aTitle').textContent=a?'계좌 수정 · 잔액 업데이트':'계좌 추가';$('aBtn').textContent=a?'저장':'계좌 추가';
   $('aform').classList.add('open');$('aName').focus({preventScroll:true});
@@ -744,7 +772,7 @@ $('aCancel').addEventListener('click',closeA);
 $('aform').addEventListener('submit',e=>{
   e.preventDefault();
   const b=money('aBal');if(!Number.isFinite(b))return;
-  const item={id:aEdit||Date.now(),n:$('aName').value.trim(),k:$('aKind').value,b,m:$('aMemo').value.trim(),u:ymd(new Date())};
+  const item={id:aEdit||Date.now(),n:$('aName').value.trim(),k:$('aKind').value,b,m:$('aMemo').value.trim(),u:ymd(new Date()),pays:readPayRows()};
   if($('aDef').checked){accs.forEach(a=>delete a.def);item.def=true}
   if(aEdit)accs=accs.map(a=>a.id===aEdit?item:a);else accs.push(item);
   saveA();closeA();renderAccs();
@@ -1204,7 +1232,7 @@ const closeAccSheet=()=>{$('accSheet').hidden=true;document.body.style.overflow=
 function renderAccSheet(){
   const a=accs.find(v=>v.id===asId);if(!a){closeAccSheet();return}
   const y=asMon.getFullYear(),m=asMon.getMonth(),key=`${y}-${pad(m+1)}`,first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate();
-  $('asTitle').textContent=a.n;$('asKind').textContent=`${a.k} · ${a.u.replace(/-/g,'.')} 기준 잔액`;$('asBal').textContent=(a.b<0?'−':'')+won(Math.abs(a.b));
+  $('asTitle').textContent=a.n;$('asKind').textContent=`${a.k} · ${a.u.replace(/-/g,'.')} 기준 잔액`+(paySum(a)?` · ${a.pays.filter(p=>p.b).map(p=>`${p.n} ${won(p.b)}`).join(' · ')}`:'');$('asBal').textContent=(a.b<0?'−':'')+won(Math.abs(a.b));
   const list=data.filter(x=>x.d.startsWith(key)).map(x=>({x,v:accEff(x,a.id)})).filter(o=>o.v!==0);
   const inn=list.filter(o=>o.v>0).reduce((s,o)=>s+o.v,0),out=list.filter(o=>o.v<0).reduce((s,o)=>s-o.v,0);
   $('asMon').textContent=`${y}년 ${m+1}월`;
