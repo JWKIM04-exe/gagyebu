@@ -973,7 +973,7 @@ $('qm').addEventListener('click',e=>{
   const d=e.target.closest('[data-qdel]');if(d){const w=quick[Number(d.dataset.qdel)];quick.splice(Number(d.dataset.qdel),1);saveQ();renderQM();toast(`'${w}' 버튼을 지웠어요`,false);return}
 });
 $('fDate').addEventListener('change',renderQM);
-$('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(!b)return;const el=curMemoEl(),m=el.value.trim(),n=b.dataset.qm;el.value=m&&!memoHas(m,n)?m+' '+n:(m||n);el.dispatchEvent(new Event('input'));el.focus()});
+$('qm').addEventListener('click',e=>{const b=e.target.closest('[data-qm]');if(!b)return;const el=curMemoEl(),m=el.value.trim(),n=b.dataset.qm;el.value=m&&!memoHas(m,n)?m+' '+n:(m||n);el.dispatchEvent(new Event('input'));if(document.activeElement&&document.activeElement.blur&&document.activeElement.matches('input,textarea'))document.activeElement.blur()});
 
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
