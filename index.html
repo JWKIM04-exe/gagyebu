@@ -534,6 +534,7 @@ function applyTx(x,sign){
   if(!a)return null;
   // 더치페이: 통장에서는 총액이 빠지고, 입금 확인된 사람 몫만큼 다시 들어옴
   const amt=x.t==='i'?x.a:x.sp?-(x.sp.tot-x.sp.sh*x.sp.p.filter(p=>p.paid).length):-x.a;
+  if(x.pay){const p=(a.pays||[]).find(v=>v.n===x.pay);if(p){p.b=(Number(p.b)||0)+sign*amt;a.u=now;return {a,p}}}
   a.b+=sign*amt;a.u=now;return {a};
 }
 function fillAccSel(){
@@ -630,10 +631,10 @@ function multiSubmit(){
   if(!rows.length){$('fErr').textContent='금액을 한 칸 이상 적어 주세요.';return}
   $('fErr').textContent='';
   const tp=type,ac=Number($('fAcc').value)||0,m=$('fMemo').value.trim(),d=$('fDate').value,now=Date.now();let r=null;
-  rows.forEach((x,i)=>{const ra=accFromMemo(x.m),item={id:now+i,t:tp,a:x.a,c:x.c,m:x.m,d,ac:ra?ra.id:ac};if(x.ph){item.ph=1;PDB.put(item.id,x.ph).catch(()=>toast('사진을 저장하지 못했어요',false))}data.push(item);r=applyTx(item,1)||r});
+  rows.forEach((x,i)=>{const pm=payFromMemo(x.m),ra=accFromMemo(x.m),item={id:now+i,t:tp,a:x.a,c:x.c,m:x.m,d,ac:pm?pm.acc.id:ra?ra.id:ac};if(pm)item.pay=pm.p.n;if(x.ph){item.ph=1;PDB.put(item.id,x.ph).catch(()=>toast('사진을 저장하지 못했어요',false))}data.push(item);r=applyTx(item,1)||r});
   const tot=rows.reduce((s,x)=>s+x.a,0);
   lastAcc=String(ac);save();saveA();renderAccs();
-  toast(`${tp==='i'?'수입':'지출'} ${rows.length}건 저장 · 합계 ${won(tot)}${r?` · ${r.a.n} 잔액 ${won(r.a.b)}`:''}`,false);
+  toast(`${tp==='i'?'수입':'지출'} ${rows.length}건 저장 · 합계 ${won(tot)}${r?` · ${balTxt(r)}`:''}`,false);
   const dd=new Date(d);cur=new Date(dd.getFullYear(),dd.getMonth(),1);
   resetForm();rowsType=null;setType(tp);render();
 }
@@ -862,11 +863,15 @@ const norm=s=>(s||'').replace(/\s+/g,'');
 const keysOf=(n,re)=>{const k=norm(n),t=k.replace(re,'');return t.length>=2&&t!==k?[k,t]:[k]};
 const memoHas=(m,n)=>{const M=norm(m);return !!M&&keysOf(n,/(값|비|료)$/).some(k=>M.includes(k))};
 function budgetOf(x,byLen,living){return byLen.find(f=>memoHas(x.m,f.n))||living||null}
+// 메모에 '네이버페이'(또는 '네이버')처럼 계좌에 연결한 페이 이름이 있으면 그 페이 잔액에서 빠짐
+function payFromMemo(m){const M=norm(m);if(!M)return null;let best=null;
+  accs.forEach(a=>(a.pays||[]).forEach(p=>{const k=norm(p.n),sh=k.replace(/페이$/,''),keys=sh.length>=2&&sh!==k?[k,sh]:[k];if(keys.some(x=>M.includes(x))&&(!best||k.length>norm(best.p.n).length))best={acc:a,p}}));return best}
+const balTxt=r=>r.p?`${r.p.n} 잔액 ${won(r.p.b)}`:`${r.a.n} 잔액 ${won(r.a.b)}`;
 function accFromMemo(m){const M=norm(m);if(!M)return null;return [...accs].sort((a,b)=>norm(b.n).length-norm(a.n).length).find(a=>keysOf(a.n,/(통장|카드|계좌)$/).some(k=>M.includes(k)))||null}
 function memoHint(){
   const el=$('mHint');if(type==='t'){el.textContent='';return}
   const m=curMemoEl().value,parts=[];
-  const rowAcc=!$('multiW').hidden&&accFromMemo(m),ac=rowAcc?rowAcc.n:accName($('fAcc').value);if(ac)parts.push(`${ac} 잔액에서 ${type==='i'?'더해져요':'빠져요'}`);
+  const pm=payFromMemo(m),rowAcc=!$('multiW').hidden&&accFromMemo(m),ac=pm?pm.p.n:rowAcc?rowAcc.n:accName($('fAcc').value);if(ac)parts.push(`${ac} 잔액에서 ${type==='i'?'더해져요':'빠져요'}`);
   if(type==='e'){
     const key=($('fDate').value||ymd(today)).slice(0,7),act=fixed.filter(f=>active(f,key));
     const f=budgetOf({m},[...act].sort((a,b)=>b.n.length-a.n.length),act.find(v=>v.n.includes('생활비')));
@@ -874,7 +879,7 @@ function memoHint(){
   }
   el.textContent=parts.length?'→ '+parts.join(' · '):'';
 }
-function memoInput(el){if(type!=='t'){const a=accFromMemo(el.value)||(!manualAcc&&defAcc());if(a)$('fAcc').value=String(a.id)}memoHint()}
+function memoInput(el){if(type!=='t'){const pm=payFromMemo(el.value),a=(pm&&pm.acc)||accFromMemo(el.value)||(!manualAcc&&defAcc());if(a)$('fAcc').value=String(a.id)}memoHint()}
 $('fMemo').addEventListener('input',()=>memoInput($('fMemo')));
 $('fAcc').addEventListener('change',()=>{manualAcc=true;memoHint()});$('fDate').addEventListener('change',memoHint);
 $('fxSum').addEventListener('click',e=>{
@@ -894,7 +899,7 @@ $('fxSum').addEventListener('click',e=>{
     const last=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
     const item={id:Date.now(),t:'e',a:amt,c:f.c,m:f.n,d:`${key}-${pad(Math.min(f.day,last))}`,ac:acId,fxr:f.id};
     data.push(item);const r=applyTx(item,1);save();saveA();renderAccs();render();
-    toast(`${f.n} ${won(amt)} 지출로 기록${r?` · ${r.a.n} 잔액 ${won(r.a.b)}`:''}`,false);return;
+    toast(`${f.n} ${won(amt)} 지출로 기록${r?` · ${balTxt(r)}`:''}`,false);return;
   }
   const b=e.target.closest('[data-bdone]');if(!b)return;
   const key=`${cur.getFullYear()}-${pad(cur.getMonth()+1)}`,f=fixed.find(v=>v.id===Number(b.dataset.bdone));if(!f)return;
@@ -973,6 +978,7 @@ $('form').addEventListener('submit',e=>{
   $('fErr').textContent='';
   const item={id:editId||Date.now(),t:type,a,c:catVal(),m:$('fMemo').value.trim(),d:$('fDate').value,ac};
   if(type==='t')item.to=to;
+  if(type!=='t'){const pm=payFromMemo(item.m);if(pm){item.ac=pm.acc.id;item.pay=pm.p.n}}
   if(singlePhoto){item.ph=1;PDB.put(item.id,singlePhoto).catch(()=>toast('사진을 저장하지 못했어요',false))}else if(editId){PDB.del(item.id).catch(()=>{})}
   if(type==='e'&&$('spOn').checked){
     const {sh,mine}=spSplit(a,spN),old=editId&&(data.find(x=>x.id===editId)||{}).sp;
@@ -987,7 +993,7 @@ $('form').addEventListener('submit',e=>{
   lastAcc=String(ac);save();saveA();renderAccs();
   if(r&&item.t==='t')toast(`이체 ${won(a)} · ${r.a.n} ${won(r.a.b)} / ${r.b.n} ${won(r.b.b)}`,false);
   else if(r&&item.sp)toast(`${r.a.n}에서 ${won(item.sp.tot)} 결제 · 지출엔 내 몫 ${won(item.a)}만 기록`,false);
-  else if(r)toast(`${r.a.n} 잔액 ${won(r.a.b)} (${item.t==='i'?'+':'−'}${won(a)})`,false);
+  else if(r)toast(`${balTxt(r)} (${item.t==='i'?'+':'−'}${won(a)})`,false);
   const d=new Date(item.d);cur=new Date(d.getFullYear(),d.getMonth(),1);
   resetForm();setType(type);render();
 });
@@ -1024,7 +1030,7 @@ function openDetail(x){
     ['구분',tl],
     ['날짜',`${y}년 ${mo}월 ${da}일 (${dw})`],
     x.t==='t'?['출금 통장',esc(accName(x.ac)||'—')]:['카테고리',esc(x.c||'—')],
-    x.t==='t'?['입금 통장',esc(accName(x.to)||'—')]:[x.t==='i'?'입금된 통장':'사용한 통장',esc(accName(x.ac)||'선택 안 함')],
+    x.t==='t'?['입금 통장',esc(accName(x.to)||'—')]:[x.t==='i'?'입금된 통장':'사용한 통장',esc(accName(x.ac)||'선택 안 함')+(x.pay?` · <b>${esc(x.pay)}</b> 잔액에서`:'')],
     ['메모',x.m?esc(x.m):'<span class="dsub">없음</span>'],
     bud?['예산',`${esc(bud.n)}에서 빠짐`]:null,
     x.sp?['더치페이',`${x.sp.n}명 · 총 ${won(x.sp.tot)} · 1인당 ${won(x.sp.sh)}<br>${x.sp.p.map(p=>`${esc(p.nm)} ${p.paid?'<b class="dok">받음</b>':'<span class="dsub">아직</span>'}`).join(' · ')}`]:null,
