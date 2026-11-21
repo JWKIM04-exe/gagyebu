@@ -607,7 +607,7 @@ function shrinkImg(f,max=1000,q=0.72){return new Promise((res,rej)=>{const r=new
 function renderThumb(id,src,i){const el=$(id);if(!el)return;el.innerHTML=src?`<span class="thumb"><img src="${src}" alt="첨부한 사진"><button type="button" data-rmph="${i==null?'s':i}" aria-label="사진 빼기">×</button></span>`:''}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-rmph]');if(!b)return;const k=b.dataset.rmph;if(k==='s'){singlePhoto=null;renderThumb('fThumb',null)}else{rowPhotos[Number(k)]=null;renderThumb('mT'+k,null)}});
 $('fPhPick').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{singlePhoto=await shrinkImg(f);renderThumb('fThumb',singlePhoto)}catch(err){toast('사진을 불러오지 못했어요',false)}});
-// ---- 지출·수입: 4칸 한 번에 입력 (칸 이름은 카테고리 설정에서 바꿈) ----
+// ---- 지출·수입: 3칸 한 번에 입력 ----
 let forceSingle=false,rowsType=null;
 const RKEY='gagyebu.rows.v1',ROWS_DEF={e:['식비','교통','저축'],i:['급여','용돈','부수입']};
 let rowCats=JSON.parse(JSON.stringify(ROWS_DEF));
@@ -616,7 +616,7 @@ const saveRows=()=>{try{localStorage.setItem(RKEY,JSON.stringify(rowCats))}catch
 function rowOpts(t,sel){return CATS.e.map(c=>`<option${c===sel?' selected':''}>${esc(c)}</option>`).join('')}
 function renderRows(){
   rowsType=type;rowPhotos=[];lastMemo=null;const first=CATS.e[0];
-  $('mRows').innerHTML=[0,1,2,3].map(i=>`<div class="mblock"><div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,first)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"></div>
+  $('mRows').innerHTML=[0,1,2].map(i=>`<div class="mblock"><div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,first)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"></div>
     <div class="memorow"><input id="mM${i}" class="rmemo" type="text" maxlength="40" placeholder="${i+1}번 메모" aria-label="${i+1}번 칸 메모"><label class="pay filelbl phbtn" aria-label="${i+1}번 메모에 사진 첨부">사진<input type="file" id="mP${i}" data-i="${i}" accept="image/*"></label></div>
     <div class="thumbs" id="mT${i}"></div></div>`).join('');
   $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
