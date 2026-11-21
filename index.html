@@ -180,6 +180,8 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .xbg-b.on::before{content:"";position:absolute;inset:0;z-index:-2;background:var(--bgimg) center top/100% auto no-repeat}
 .xbg-b.on::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 0,transparent 150px,color-mix(in srgb,var(--card) 50%,transparent) 230px,color-mix(in srgb,var(--card) 85%,transparent) 300px,var(--card) min(360px,92vw))}
 .xbg-b.on h2,.xbg-b.on .day span,.xbg-b.on .tot{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
+.box.on{background:var(--card)}.box.on .bal{background:transparent}.box.on .cats{border-left-color:color-mix(in srgb,var(--line) 70%,transparent)}
+.box.on small,.box.on .big{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
 .xbg-b.on label{text-shadow:0 1px 4px color-mix(in srgb,var(--card) 95%,transparent)}
 .mrow{display:grid;grid-template-columns:clamp(78px,26%,120px) minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
 .mc,.mcname{height:44px;border-radius:10px;border:2px solid light-dark(#9fb8ff,#3a5cc4);background:light-dark(#eef2ff,#0f1d3d);color:light-dark(#1240e0,#9fb8ff);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 8px}
@@ -243,7 +245,7 @@ header h1{flex:1}
   <div class="pager" id="pager">
    <div class="track" id="track">
     <div class="page" role="tabpanel" aria-label="기록">
-  <section class="box" aria-label="이번 달 요약">
+  <section class="box xbg-b" id="sumBox" aria-label="이번 달 요약">
     <div class="bal">
       <small>이번 달 잔액</small>
       <button type="button" class="calbtn" id="calBtn" aria-expanded="false" aria-controls="calWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8" cy="15" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/></svg>달력</button>
@@ -272,7 +274,7 @@ header h1{flex:1}
   </section>
 
   <div class="grid">
-    <form class="panel xbg-b" id="form" autocomplete="off">
+    <form class="panel" id="form" autocomplete="off">
       <h2 id="formTitle">내역 추가</h2>
       <div class="smsbox">
         <button type="button" class="pay qplus" id="smsBtn" aria-expanded="false">은행 문자로 입력</button>
@@ -393,7 +395,7 @@ header h1{flex:1}
     <div class="sheeth"><b id="setTitle">설정</b><button type="button" class="ib" id="setClose" aria-label="설정 닫기">×</button></div>
     <section class="panel bgset" aria-label="배경 사진">
     <h2 style="margin-top:4px">기록 배경 사진</h2>
-    <p class="note" style="margin-top:0">기록 화면의 '내역 추가' 칸에 그라데이션 배경으로 들어가요.</p>
+    <p class="note" style="margin-top:0">기록 화면 맨 위 '이번 달 잔액' 칸에 그라데이션 배경으로 들어가요.</p>
     <div class="bgprev" id="bgPrevR"></div>
     <div class="bkrow"><label class="pay filelbl">갤러리에서 사진 고르기<input type="file" id="bgPickR" accept="image/*"></label><button type="button" class="pay" id="bgDefR" hidden>원래 사진으로</button><button type="button" class="pay" id="bgClearR" hidden>사진 빼기</button></div>
     <h2 style="margin-top:20px">내 계좌 배경 사진</h2>
@@ -1136,7 +1138,7 @@ $('smsPrev').addEventListener('click',e=>{
 // ---- 배경 사진 (기록·고정지출 추가·내 계좌) · 고른 사진은 이 기기에만 저장 ----
 const DEFAULT_FIXED_BG='';
 const BG_SLOTS=[
-  {key:'gagyebu.bgrec.v1',panel:'form',id:'R',name:'기록'},
+  {key:'gagyebu.bgrec.v1',panel:'sumBox',id:'R',name:'기록'},
   {key:'gagyebu.bgfix.v1',panel:'xform',id:'F',name:'고정지출',def:DEFAULT_FIXED_BG},
   {key:'gagyebu.bgacc.v1',panel:'accPanel',id:'A',name:'내 계좌'}];
 function renderBg(){BG_SLOTS.forEach(sl=>{
