@@ -198,7 +198,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .dl dt,.dl dd{margin:0;padding:12px 0;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e)}
 .dl dt{color:var(--sub);font-size:14px}.dl dd{overflow-wrap:anywhere}
 .dsub{color:var(--sub);font-size:13px}.dok{color:var(--emInk)}
-.it[data-id]{cursor:pointer}
+.it[data-id],.it[data-cid]{cursor:pointer}
 .asbal{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 12px;flex-wrap:wrap}.asbal b{font-size:26px;font-weight:800}
 .aslist{margin-top:10px}.aslist .it{cursor:pointer}
 .aslist .dayh{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin:14px 0 2px}
@@ -875,7 +875,7 @@ $('fxSum').addEventListener('click',e=>{
 });
 // ---- 달력 ----
 let calOpen=false,selDay=null,pickFor=null;
-const short=n=>n>=10000?(Math.round(n/1000)/10).toLocaleString('ko-KR')+'만':comma(n);
+const short=n=>n>=100000?Math.round(n/10000).toLocaleString('ko-KR')+'만':n>=10000?(Math.round(n/1000)/10)+'만':comma(n);
 function renderCal(key,month){
   if(!calOpen)return;
   const y=cur.getFullYear(),m=cur.getMonth(),first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate();
@@ -894,14 +894,14 @@ function renderCal(key,month){
   if(!selDay){$('cDet').innerHTML='<p class="note">날짜를 누르면 그날 내역이 보여요.</p>';return}
   const items=month.filter(x=>x.d===selDay),dt=new Date(selDay),e=items.filter(x=>x.t==='e').reduce((s,x)=>s+x.a,0),inc=items.filter(x=>x.t==='i').reduce((s,x)=>s+x.a,0);
   $('cDet').innerHTML=`<h3><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${'일월화수목금토'[dt.getDay()]})</span><span class="num" style="font-size:14px">${e?`<span style="color:var(--pkInk)">−${won(e)}</span> `:''}${inc?`<span style="color:var(--emInk)">+${won(inc)}</span>`:''}</span></h3>`+
-    (items.length?items.map(x=>`<div class="it"><span class="tag ${x.t}">${x.t==='t'?'이체':esc(x.c)}</span><span class="memo">${x.t==='t'?`${esc(accName(x.ac))} → ${esc(accName(x.to))}`:esc(x.m||'—')}${x.t!=='t'&&accName(x.ac)?` <span class="an">· ${esc(accName(x.ac))}</span>`:''}</span><span class="num amt ${x.t}">${x.t==='i'?'+':x.t==='e'?'−':''}${won(x.a)}</span><span></span></div>`).join(''):'<p class="empty">이 날은 내역이 없어요</p>')+
+    (items.length?items.map(x=>`<div class="it" data-cid="${x.id}"><span class="tag ${x.t}">${x.t==='t'?'이체':esc(x.c)}</span><span class="memo">${x.t==='t'?`${esc(accName(x.ac))} → ${esc(accName(x.to))}`:esc(x.m||'—')}${x.t!=='t'&&accName(x.ac)?` <span class="an">· ${esc(accName(x.ac))}</span>`:''}</span><span class="num amt ${x.t}">${x.t==='i'?'+':x.t==='e'?'−':''}${won(x.a)}</span><span></span></div>`).join(''):'<p class="empty">이 날은 내역이 없어요</p>')+
     `<button type="button" class="add" id="cAdd">+ 이 날짜로 내역 추가</button>`;
 }
 $('calBtn').addEventListener('click',()=>{calOpen=!calOpen;$('calWrap').hidden=!calOpen;$('calBtn').setAttribute('aria-expanded',calOpen);render();if(calOpen)$('calWrap').scrollIntoView({behavior:'smooth',block:'nearest'})});
 $('cPrev').addEventListener('click',()=>$('prev').click());
 $('cNext').addEventListener('click',()=>$('next').click());
 $('cGrid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selDay=selDay===b.dataset.day?null:b.dataset.day;render()});
-$('cDet').addEventListener('click',e=>{if(e.target.closest('#cAdd')&&selDay){resetForm();$('fDate').value=selDay;$('form').scrollIntoView({behavior:'smooth',block:'start'});$('fAmt').focus({preventScroll:true})}});
+$('cDet').addEventListener('click',e=>{const ci=e.target.closest('[data-cid]');if(ci){const x=data.find(v=>v.id===Number(ci.dataset.cid));if(x)openDetail(x);return}if(e.target.closest('#cAdd')&&selDay){resetForm();$('fDate').value=selDay;$('form').scrollIntoView({behavior:'smooth',block:'start'});$('fAmt').focus({preventScroll:true})}});
 
 // ---- 메모 빠른 입력: 내가 추가한 말 + 고정지출 이름 ----
 const QKEY='gagyebu.quick.v1',HKEY='gagyebu.quickhide.v1';let quick=[],qhide=[],qmEdit=false,qmAdding=false;
