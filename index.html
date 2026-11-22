@@ -33,7 +33,7 @@ h1{font-size:24px;line-height:1.05;margin:0;font-weight:800}
 button,input,select{font:inherit;font-size:16px;color:inherit}
 .ib{width:44px;height:44px;border:2px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--em);outline-offset:2px}
-.box{border:2px solid var(--line);border-radius:14px;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+.box{border:2px solid var(--line);border-radius:14px;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr)}
 .bal{padding:22px;background:var(--card)}
 .bal small{color:var(--sub);font-size:14px}
 .big{font-size:clamp(34px,7vw,52px);font-weight:800;line-height:1.05;white-space:nowrap;margin:4px 0 14px}
@@ -282,10 +282,6 @@ header h1{flex:1}
       </div>
       <div class="bud" id="fxSum" aria-label="고정지출 항목별 남은 금액"></div>
       <p class="fxsum due" id="dueSum"></p>
-    </div>
-    <div class="cats">
-      <h2>카테고리별 지출</h2>
-      <div id="catList"></div>
     </div>
   </section>
 
@@ -741,7 +737,7 @@ function render(){
   const by={};month.filter(x=>x.t==='e').forEach(x=>by[x.c]=(by[x.c]||0)+x.a);
   const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
   const max=rows.length?rows[0][1]:1;
-  $('catList').innerHTML=rows.length?rows.map(([c,v])=>`<div class="row"><span>${c}</span><div class="bar"><i style="width:${v/max*100}%"></i></div><span class="num">${won(v)}</span></div>`).join(''):'<p class="empty">이번 달 지출이 없어요</p>';
+  if($('catList'))$('catList').innerHTML=rows.length?rows.map(([c,v])=>`<div class="row"><span>${c}</span><div class="bar"><i style="width:${v/max*100}%"></i></div><span class="num">${won(v)}</span></div>`).join(''):'<p class="empty">이번 달 지출이 없어요</p>';
 
   const q=$('q').value.trim(),f=$('flt').value,af=$('aflt').value;
   const shown=month.filter(x=>(!f||x.t===f)&&(!af||String(x.ac||'')===af||String(x.to||'')===af)&&(!q||(x.m+x.c+accName(x.ac)+accName(x.to)+(x.sp?x.sp.p.map(p=>p.nm).join(' '):'')).includes(q))).sort((a,b)=>b.d.localeCompare(a.d)||b.id-a.id);
