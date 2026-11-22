@@ -221,7 +221,8 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .hrow{display:grid;grid-template-columns:5.5em minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px;margin-bottom:7px}
 .hrow .bar{height:10px}.hrow .num{font-size:13px}.hrow .pct{color:var(--sub);font-size:11px;margin-left:4px}
 .days{display:flex;align-items:flex-end;gap:2px;height:110px;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e);padding-bottom:2px}
-.days i{flex:1;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.days i.today{background:var(--em)}
+.dbar{flex:1;height:100%;display:flex;align-items:flex-end;background:transparent;border:0;padding:0;cursor:pointer;min-width:0;border-radius:3px}.dbar.sel{background:color-mix(in srgb,var(--em) 18%,transparent)}.dbar.sel i{outline:2px solid var(--ink)}
+.days i{width:100%;display:block;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.days i.today{background:var(--em)}
 .dax{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px}
 .mons{display:flex;align-items:flex-end;gap:8px;height:120px}.mons div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;font-size:11px;color:var(--sub)}
 .mons i{width:70%;background:var(--pkInk);border-radius:4px 4px 0 0;min-height:2px;display:block}.mons div.cur i{background:var(--em)}.mons div.cur{color:var(--ink);font-weight:700}
@@ -1298,7 +1299,13 @@ $('asList').addEventListener('click',e=>{const r=e.target.closest('[data-xid]');
 $('asEdit').addEventListener('click',()=>{const a=accs.find(v=>v.id===asId);closeAccSheet();if(a)openA(a)});
 
 // ---- 월 사용 통계 (기본 틀) ----
-let stMon=null;
+let stMon=null,stDay=null;
+function stDayHtml(key){
+  if(!stDay||!stDay.startsWith(key))return '<p class="dsub" style="margin:6px 0 0">막대를 누르면 그날 어디서 뭘 썼는지 보여요</p>';
+  const its=data.filter(x=>x.d===stDay&&x.t==='e').sort((a,b)=>b.a-a.a),dt=new Date(stDay),tot=its.reduce((s,x)=>s+x.a,0);
+  return `<div class="dayh" style="display:flex;justify-content:space-between;margin:12px 0 2px;font-weight:700"><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${'일월화수목금토'[dt.getDay()]})</span><span class="num" style="color:var(--pkInk)">−${won(tot)}</span></div>`+
+    (its.length?its.map(x=>`<div class="it" data-sx="${x.id}"><span class="tag e">${esc(x.c)}</span><span class="memo">${esc(x.m||'—')}${(x.pay||accName(x.ac))?` <span class="an">· ${esc(x.pay||accName(x.ac))}</span>`:''}</span><span class="num amt e">−${won(x.a)}</span><span></span></div>`).join(''):'<p class="empty" style="padding:14px 0">이 날은 지출이 없어요</p>');
+}
 const mkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
 const sumOf=(arr,t)=>arr.filter(x=>x.t===t).reduce((s,x)=>s+x.a,0);
 function renderStats(){
@@ -1325,8 +1332,9 @@ function renderStats(){
     <h3 class="sth">카테고리별 지출 <small>비율</small></h3>
     ${cats.length?cats.map(([c,v])=>`<div class="hrow"><span>${esc(c)}</span><div class="bar"><i style="width:${v/cmax*100}%"></i></div><span class="num">${won(v)}<span class="pct">${pct(v)}%</span></span></div>`).join(''):'<p class="dsub">지출이 없어요</p>'}
     <h3 class="sth">날짜별 지출 <small>가장 많이 쓴 날 ${won(dmax===1&&!exp?0:dmax)}</small></h3>
-    <div class="days">${byDay.map((v,i)=>`<i class="${v?'':'z'}${`${key}-${pad(i+1)}`===tk?' today':''}" style="height:${v?Math.max(4,v/dmax*100):2}%" title="${m+1}월 ${i+1}일 ${won(v)}"></i>`).join('')}</div>
+    <div class="days">${byDay.map((v,i)=>{const ds=`${key}-${pad(i+1)}`;return `<button type="button" class="dbar${ds===stDay?' sel':''}" data-sday="${ds}" aria-label="${m+1}월 ${i+1}일 지출 ${won(v)}"><i class="${v?'':'z'}${ds===tk?' today':''}" style="height:${v?Math.max(4,v/dmax*100):2}%"></i></button>`}).join('')}</div>
     <div class="dax"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div>
+    <div id="stDayList">${stDayHtml(key)}</div>
     <h3 class="sth">통장별 지출</h3>
     ${accl.map(([n,v])=>`<div class="hrow"><span>${esc(n)}</span><div class="bar"><i style="width:${v/amax*100}%;background:var(--em)"></i></div><span class="num">${won(v)}</span></div>`).join('')||'<p class="dsub">지출이 없어요</p>'}
     <h3 class="sth">최근 6개월 지출</h3>
@@ -1334,10 +1342,15 @@ function renderStats(){
     <h3 class="sth">가장 큰 지출</h3>
     <ol class="top">${top.map(x=>`<li><span>${esc(x.m||x.c)}<span class="dsub">${Number(x.d.slice(5,7))}월 ${Number(x.d.slice(8))}일 · ${esc(x.c)}</span></span><b class="num" style="color:var(--pkInk)">−${won(x.a)}</b></li>`).join('')||'<li><span class="dsub">지출이 없어요</span></li>'}</ol>`;
 }
-const openStats=()=>{stMon=new Date(cur.getFullYear(),cur.getMonth(),1);renderStats();$('stats').hidden=false;document.body.style.overflow='hidden';$('stClose').focus({preventScroll:true})};
+const openStats=()=>{stMon=new Date(cur.getFullYear(),cur.getMonth(),1);stDay=null;renderStats();$('stats').hidden=false;document.body.style.overflow='hidden';$('stClose').focus({preventScroll:true})};
 const closeStats=()=>{$('stats').hidden=true;document.body.style.overflow=''};
 $('mLabel').addEventListener('click',openStats);
 $('stClose').addEventListener('click',closeStats);
+$('stBody').addEventListener('click',e=>{
+  const b=e.target.closest('[data-sday]');
+  if(b){stDay=stDay===b.dataset.sday?null:b.dataset.sday;const key=mkey(stMon);$('stDayList').innerHTML=stDayHtml(key);$('stBody').querySelectorAll('.dbar').forEach(x=>x.classList.toggle('sel',x.dataset.sday===stDay));if(stDay)$('stDayList').scrollIntoView({behavior:'smooth',block:'nearest'});return}
+  const r=e.target.closest('[data-sx]');if(r){const x=data.find(v=>v.id===Number(r.dataset.sx));if(x){closeStats();openDetail(x)}}
+});
 $('stats').addEventListener('click',e=>{if(e.target===$('stats'))closeStats()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('stats').hidden)closeStats()});
 $('stPrev').addEventListener('click',()=>{stMon=new Date(stMon.getFullYear(),stMon.getMonth()-1,1);renderStats()});
