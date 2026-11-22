@@ -222,6 +222,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .hrow .bar{height:10px}.hrow .num{font-size:13px}.hrow .pct{color:var(--sub);font-size:11px;margin-left:4px}
 .days{display:flex;align-items:flex-end;gap:2px;height:110px;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e);padding-bottom:2px}
 .dbar{flex:1;height:100%;display:flex;align-items:flex-end;background:transparent;border:0;padding:0;cursor:pointer;min-width:0;border-radius:3px}.dbar.sel{background:color-mix(in srgb,var(--em) 18%,transparent)}.dbar.sel i{outline:2px solid var(--ink)}
+.days i.g{background:var(--em);opacity:1}
 .days i{width:100%;display:block;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.dbar.today{position:relative}.dbar.today::after{content:'';position:absolute;left:50%;bottom:-8px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--ink)}
 .dax{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px}
 .mons{display:flex;align-items:flex-end;gap:8px;height:120px}.mons div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;font-size:11px;color:var(--sub)}
@@ -1302,9 +1303,9 @@ $('asEdit').addEventListener('click',()=>{const a=accs.find(v=>v.id===asId);clos
 let stMon=null,stDay=null;
 function stDayHtml(key){
   if(!stDay||!stDay.startsWith(key))return '<p class="dsub" style="margin:6px 0 0">막대를 누르면 그날 어디서 뭘 썼는지 보여요</p>';
-  const its=data.filter(x=>x.d===stDay&&x.t==='e').sort((a,b)=>b.a-a.a),dt=new Date(stDay),tot=its.reduce((s,x)=>s+x.a,0);
-  return `<div class="dayh" style="display:flex;justify-content:space-between;margin:12px 0 2px;font-weight:700"><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${'일월화수목금토'[dt.getDay()]})</span><span class="num" style="color:var(--pkInk)">−${won(tot)}</span></div>`+
-    (its.length?its.map(x=>`<div class="it" data-sx="${x.id}"><span class="tag e">${esc(x.c)}</span><span class="memo">${esc(x.m||'—')}${(x.pay||accName(x.ac))?` <span class="an">· ${esc(x.pay||accName(x.ac))}</span>`:''}</span><span class="num amt e">−${won(x.a)}</span><span></span></div>`).join(''):'<p class="empty" style="padding:14px 0">이 날은 지출이 없어요</p>');
+  const its=data.filter(x=>x.d===stDay&&x.t!=='t').sort((a,b)=>(a.t===b.t?b.a-a.a:a.t==='i'?-1:1)),dt=new Date(stDay),tot=its.reduce((s,x)=>s+(x.t==='i'?x.a:-x.a),0);
+  return `<div class="dayh" style="display:flex;justify-content:space-between;margin:12px 0 2px;font-weight:700"><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${'일월화수목금토'[dt.getDay()]})</span><span class="num" style="color:${tot>=0?'var(--emInk)':'var(--pkInk)'}">${tot>=0?'+':'−'}${won(Math.abs(tot))}</span></div>`+
+    (its.length?its.map(x=>`<div class="it" data-sx="${x.id}"><span class="tag ${x.t}">${esc(x.c)}</span><span class="memo">${esc(x.m||'—')}${(x.pay||accName(x.ac))?` <span class="an">· ${esc(x.pay||accName(x.ac))}</span>`:''}</span><span class="num amt ${x.t}">${x.t==='i'?'+':'−'}${won(x.a)}</span><span></span></div>`).join(''):'<p class="empty" style="padding:14px 0">이 날은 내역이 없어요</p>');
 }
 const mkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
 const sumOf=(arr,t)=>arr.filter(x=>x.t===t).reduce((s,x)=>s+x.a,0);
@@ -1317,7 +1318,7 @@ function renderStats(){
   const ex=mon.filter(x=>x.t==='e');
   const byCat={};ex.forEach(x=>byCat[x.c]=(byCat[x.c]||0)+x.a);const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]),cmax=cats.length?cats[0][1]:1;
   const byAcc={};ex.forEach(x=>{const n=x.pay||accName(x.ac)||'통장 없음';byAcc[n]=(byAcc[n]||0)+x.a});const accl=Object.entries(byAcc).sort((a,b)=>b[1]-a[1]),amax=accl.length?accl[0][1]:1;
-  const byDay=Array(last).fill(0);ex.forEach(x=>byDay[Number(x.d.slice(8))-1]+=x.a);const dmax=Math.max(1,...byDay);
+  const byDay=Array(last).fill(0),byInc=Array(last).fill(0);ex.forEach(x=>byDay[Number(x.d.slice(8))-1]+=x.a);mon.filter(x=>x.t==='i').forEach(x=>byInc[Number(x.d.slice(8))-1]+=x.a);const dmax=Math.max(1,...byDay);
   const days=byDay.filter(v=>v>0).length,avg=days?Math.round(exp/last):0;
   const months=[...Array(6)].map((_,k)=>{const d=new Date(y,m-5+k,1),kk=mkey(d);return {lb:`${d.getMonth()+1}월`,v:sumOf(data.filter(x=>x.d.startsWith(kk)),'e'),cur:k===5}}),mmax=Math.max(1,...months.map(o=>o.v));
   const top=[...ex].sort((a,b)=>b.a-a.a).slice(0,3),tk=ymd(today);
@@ -1332,8 +1333,8 @@ function renderStats(){
     <h3 class="sth">카테고리별 지출 <small>비율</small></h3>
     ${cats.length?cats.map(([c,v])=>`<div class="hrow"><span>${esc(c)}</span><div class="bar"><i style="width:${v/cmax*100}%"></i></div><span class="num">${won(v)}<span class="pct">${pct(v)}%</span></span></div>`).join(''):'<p class="dsub">지출이 없어요</p>'}
     <h3 class="sth">날짜별 지출 <small>가장 많이 쓴 날 ${won(dmax===1&&!exp?0:dmax)}</small></h3>
-    <div class="days">${byDay.map((v,i)=>{const ds=`${key}-${pad(i+1)}`;return `<button type="button" class="dbar${ds===stDay?' sel':''}${ds===tk?' today':''}" data-sday="${ds}" aria-label="${m+1}월 ${i+1}일 지출 ${won(v)}"><i class="${v?'':'z'}" style="height:${v?Math.max(4,v/dmax*100):2}%"></i></button>`}).join('')}</div>
-    <div class="dax" style="margin-top:10px"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div>${tk.startsWith(key)?'<p class="dsub" style="margin:2px 0 0;font-size:11px">● 표시는 오늘이에요</p>':''}
+    <div class="days">${byDay.map((v,i)=>{const ds=`${key}-${pad(i+1)}`;return `${(()=>{const inc=byInc[i],g=inc>v,h=g?Math.min(100,Math.max(4,(inc-v)/dmax*100)):v?Math.max(4,v/dmax*100):2;return `<button type="button" class="dbar${ds===stDay?' sel':''}${ds===tk?' today':''}" data-sday="${ds}" aria-label="${m+1}월 ${i+1}일 지출 ${won(v)}${inc?` 수입 ${won(inc)}`:''}"><i class="${g?'g':v?'':'z'}" style="height:${h}%"></i></button>`})()}`}).join('')}</div>
+    <div class="dax" style="margin-top:10px"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div><p class="dsub" style="margin:2px 0 0;font-size:11px"><span style="color:var(--pkInk)">■</span> 지출 · <span style="color:var(--em)">■</span> 수입이 더 많은 날${tk.startsWith(key)?' · ● 오늘':''}</p>
     <div id="stDayList">${stDayHtml(key)}</div>
     <h3 class="sth">통장별 지출</h3>
     ${accl.map(([n,v])=>`<div class="hrow"><span>${esc(n)}</span><div class="bar"><i style="width:${v/amax*100}%;background:var(--em)"></i></div><span class="num">${won(v)}</span></div>`).join('')||'<p class="dsub">지출이 없어요</p>'}
