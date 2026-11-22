@@ -226,7 +226,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .days i{width:100%;display:block;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.dbar.today{position:relative}.dbar.today::after{content:'';position:absolute;left:50%;bottom:-8px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--ink)}
 .dax{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px}
 .mons{display:flex;align-items:flex-end;gap:8px;height:120px}.mons div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;font-size:11px;color:var(--sub)}
-.mons i{width:70%;background:var(--pkInk);border-radius:4px 4px 0 0;min-height:2px;display:block}.mons div.cur i{background:var(--em)}.mons div.cur{color:var(--ink);font-weight:700}
+.mons i{width:70%;background:var(--pkInk);opacity:.45;border-radius:4px 4px 0 0;min-height:2px;display:block}.mons div.cur i{background:var(--pkInk);opacity:1}.mons div.cur{color:var(--ink);font-weight:700}
 .top li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:8px 0;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e);font-size:14px}.top{list-style:none;padding:0;margin:0}.top .dsub{display:block;font-size:12px}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
@@ -1337,7 +1337,7 @@ function renderStats(){
     <div class="dax" style="margin-top:10px"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div><p class="dsub" style="margin:2px 0 0;font-size:11px"><span style="color:var(--pkInk)">■</span> 지출 · <span style="color:var(--em)">■</span> 수입이 더 많은 날${tk.startsWith(key)?' · ● 오늘':''}</p>
     <div id="stDayList">${stDayHtml(key)}</div>
     <h3 class="sth">통장별 지출</h3>
-    ${accl.map(([n,v])=>`<div class="hrow"><span>${esc(n)}</span><div class="bar"><i style="width:${v/amax*100}%;background:var(--em)"></i></div><span class="num">${won(v)}</span></div>`).join('')||'<p class="dsub">지출이 없어요</p>'}
+    ${accl.map(([n,v])=>`<div class="hrow"><span>${esc(n)}</span><div class="bar"><i style="width:${v/amax*100}%"></i></div><span class="num">${won(v)}</span></div>`).join('')||'<p class="dsub">지출이 없어요</p>'}
     <h3 class="sth">최근 6개월 지출</h3>
     <div class="mons">${months.map(o=>`<div class="${o.cur?'cur':''}"><span class="num">${o.v?short(o.v):''}</span><i style="height:${o.v?Math.max(3,o.v/mmax*80):2}%"></i><span>${o.lb}</span></div>`).join('')}</div>
     <h3 class="sth">가장 큰 지출</h3>
