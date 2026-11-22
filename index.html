@@ -213,6 +213,19 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .payw{margin-top:8px}.payn::-webkit-calendar-picker-indicator{display:none!important}.payn{padding:0 10px}
 .payrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 44px;gap:6px;align-items:center;margin-bottom:6px}
 .pays{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--sub);margin-top:6px}.pays b{color:var(--ink);font-weight:700}
+.mlbl{background:transparent;border:0;color:inherit;font:inherit;font-weight:700;font-size:18px;min-width:7.5em;min-height:44px;cursor:pointer;border-radius:10px;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:5px}
+@media(max-width:420px){.mlbl{min-width:6.2em;font-size:16px}}
+.stk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 4px}
+.stk div{border:1px solid light-dark(#e6e8e7,#1e3a2e);border-radius:12px;padding:10px}.stk span{display:block;font-size:12px;color:var(--sub)}.stk b{font-size:16px;white-space:nowrap}
+.sth{font-size:15px;margin:18px 0 8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}.sth small{font-weight:400;color:var(--sub);font-size:12px}
+.hrow{display:grid;grid-template-columns:5.5em minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px;margin-bottom:7px}
+.hrow .bar{height:10px}.hrow .num{font-size:13px}.hrow .pct{color:var(--sub);font-size:11px;margin-left:4px}
+.days{display:flex;align-items:flex-end;gap:2px;height:110px;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e);padding-bottom:2px}
+.days i{flex:1;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.days i.today{background:var(--em)}
+.dax{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px}
+.mons{display:flex;align-items:flex-end;gap:8px;height:120px}.mons div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;font-size:11px;color:var(--sub)}
+.mons i{width:70%;background:var(--pkInk);border-radius:4px 4px 0 0;min-height:2px;display:block}.mons div.cur i{background:var(--em)}.mons div.cur{color:var(--ink);font-weight:700}
+.top li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:8px 0;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e);font-size:14px}.top{list-style:none;padding:0;margin:0}.top .dsub{display:block;font-size:12px}
 .err{color:var(--pkInk);font-size:14px;margin:8px 0 0;min-height:1em}
 header h1{flex:1}
 .gear{display:grid;place-items:center;padding:0}.gear svg{width:22px;height:22px}
@@ -242,7 +255,7 @@ header h1{flex:1}
     <h1>가계부</h1>
     <div class="mon">
       <button class="ib" id="prev" aria-label="이전 달">‹</button>
-      <b id="mLabel"></b>
+      <button type="button" id="mLabel" class="mlbl" aria-label="이 달 통계 보기"></button>
       <button class="ib" id="next" aria-label="다음 달">›</button>
     </div>
     <button class="ib gear" id="setBtn" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -463,6 +476,13 @@ header h1{flex:1}
     <div class="cg" id="asCal"></div>
     <div id="asList" class="aslist"></div>
     <button type="button" class="go ghost" id="asEdit" style="margin-top:14px">계좌 정보 수정 · 잔액 고치기</button>
+  </div>
+</div>
+<div class="sheet" id="stats" hidden>
+  <div class="sheetin" role="dialog" aria-modal="true" aria-labelledby="stTitle">
+    <div class="sheeth"><b id="stTitle"></b><button type="button" class="ib" id="stClose" aria-label="닫기">×</button></div>
+    <div class="calh" style="margin-bottom:6px"><button type="button" class="ib" id="stPrev" aria-label="이전 달">‹</button><span class="dsub">월 사용 통계</span><button type="button" class="ib" id="stNext" aria-label="다음 달">›</button></div>
+    <div id="stBody"></div>
   </div>
 </div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="undo">되돌리기</button></div>
@@ -1276,6 +1296,52 @@ $('asNext').addEventListener('click',()=>{asMon=new Date(asMon.getFullYear(),asM
 $('asCal').addEventListener('click',e=>{const b=e.target.closest('[data-aday]');if(!b)return;asDay=asDay===b.dataset.aday?null:b.dataset.aday;renderAccSheet()});
 $('asList').addEventListener('click',e=>{const r=e.target.closest('[data-xid]');if(!r)return;const x=data.find(v=>v.id===Number(r.dataset.xid));if(!x)return;closeAccSheet();openDetail(x)});
 $('asEdit').addEventListener('click',()=>{const a=accs.find(v=>v.id===asId);closeAccSheet();if(a)openA(a)});
+
+// ---- 월 사용 통계 (기본 틀) ----
+let stMon=null;
+const mkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const sumOf=(arr,t)=>arr.filter(x=>x.t===t).reduce((s,x)=>s+x.a,0);
+function renderStats(){
+  const y=stMon.getFullYear(),m=stMon.getMonth(),key=mkey(stMon),last=new Date(y,m+1,0).getDate();
+  const mon=data.filter(x=>x.d.startsWith(key)&&x.t!=='t'),inc=sumOf(mon,'i'),exp=sumOf(mon,'e');
+  const prevKey=mkey(new Date(y,m-1,1)),pexp=sumOf(data.filter(x=>x.d.startsWith(prevKey)),'e');
+  const diff=pexp?Math.round((exp-pexp)/pexp*100):null;
+  $('stTitle').textContent=`${y}년 ${m+1}월 통계`;
+  const ex=mon.filter(x=>x.t==='e');
+  const byCat={};ex.forEach(x=>byCat[x.c]=(byCat[x.c]||0)+x.a);const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]),cmax=cats.length?cats[0][1]:1;
+  const byAcc={};ex.forEach(x=>{const n=x.pay||accName(x.ac)||'통장 없음';byAcc[n]=(byAcc[n]||0)+x.a});const accl=Object.entries(byAcc).sort((a,b)=>b[1]-a[1]),amax=accl.length?accl[0][1]:1;
+  const byDay=Array(last).fill(0);ex.forEach(x=>byDay[Number(x.d.slice(8))-1]+=x.a);const dmax=Math.max(1,...byDay);
+  const days=byDay.filter(v=>v>0).length,avg=days?Math.round(exp/last):0;
+  const months=[...Array(6)].map((_,k)=>{const d=new Date(y,m-5+k,1),kk=mkey(d);return {lb:`${d.getMonth()+1}월`,v:sumOf(data.filter(x=>x.d.startsWith(kk)),'e'),cur:k===5}}),mmax=Math.max(1,...months.map(o=>o.v));
+  const top=[...ex].sort((a,b)=>b.a-a.a).slice(0,3),tk=ymd(today);
+  const pct=v=>exp?Math.round(v/exp*100):0;
+  $('stBody').innerHTML=!mon.length?'<p class="empty">이 달에는 기록된 내역이 없어요</p>':`
+    <div class="stk">
+      <div><span>수입</span><b class="num" style="color:var(--emInk)">${won(inc)}</b></div>
+      <div><span>지출</span><b class="num" style="color:var(--pkInk)">${won(exp)}</b></div>
+      <div><span>남은 돈</span><b class="num">${inc-exp<0?'−':''}${won(Math.abs(inc-exp))}</b></div>
+    </div>
+    <p class="dsub" style="margin:6px 0 0">하루 평균 지출 ${won(avg)} · 돈 쓴 날 ${days}일${diff==null?'':` · 지난달보다 지출 <b style="color:${diff>0?'var(--pkInk)':'var(--emInk)'}">${diff>0?'+':''}${diff}%</b>`}</p>
+    <h3 class="sth">카테고리별 지출 <small>비율</small></h3>
+    ${cats.length?cats.map(([c,v])=>`<div class="hrow"><span>${esc(c)}</span><div class="bar"><i style="width:${v/cmax*100}%"></i></div><span class="num">${won(v)}<span class="pct">${pct(v)}%</span></span></div>`).join(''):'<p class="dsub">지출이 없어요</p>'}
+    <h3 class="sth">날짜별 지출 <small>가장 많이 쓴 날 ${won(dmax===1&&!exp?0:dmax)}</small></h3>
+    <div class="days">${byDay.map((v,i)=>`<i class="${v?'':'z'}${`${key}-${pad(i+1)}`===tk?' today':''}" style="height:${v?Math.max(4,v/dmax*100):2}%" title="${m+1}월 ${i+1}일 ${won(v)}"></i>`).join('')}</div>
+    <div class="dax"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div>
+    <h3 class="sth">통장별 지출</h3>
+    ${accl.map(([n,v])=>`<div class="hrow"><span>${esc(n)}</span><div class="bar"><i style="width:${v/amax*100}%;background:var(--em)"></i></div><span class="num">${won(v)}</span></div>`).join('')||'<p class="dsub">지출이 없어요</p>'}
+    <h3 class="sth">최근 6개월 지출</h3>
+    <div class="mons">${months.map(o=>`<div class="${o.cur?'cur':''}"><span class="num">${o.v?short(o.v):''}</span><i style="height:${o.v?Math.max(3,o.v/mmax*80):2}%"></i><span>${o.lb}</span></div>`).join('')}</div>
+    <h3 class="sth">가장 큰 지출</h3>
+    <ol class="top">${top.map(x=>`<li><span>${esc(x.m||x.c)}<span class="dsub">${Number(x.d.slice(5,7))}월 ${Number(x.d.slice(8))}일 · ${esc(x.c)}</span></span><b class="num" style="color:var(--pkInk)">−${won(x.a)}</b></li>`).join('')||'<li><span class="dsub">지출이 없어요</span></li>'}</ol>`;
+}
+const openStats=()=>{stMon=new Date(cur.getFullYear(),cur.getMonth(),1);renderStats();$('stats').hidden=false;document.body.style.overflow='hidden';$('stClose').focus({preventScroll:true})};
+const closeStats=()=>{$('stats').hidden=true;document.body.style.overflow=''};
+$('mLabel').addEventListener('click',openStats);
+$('stClose').addEventListener('click',closeStats);
+$('stats').addEventListener('click',e=>{if(e.target===$('stats'))closeStats()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('stats').hidden)closeStats()});
+$('stPrev').addEventListener('click',()=>{stMon=new Date(stMon.getFullYear(),stMon.getMonth()-1,1);renderStats()});
+$('stNext').addEventListener('click',()=>{stMon=new Date(stMon.getFullYear(),stMon.getMonth()+1,1);renderStats()});
 
 setType('e');renderAccs();resetForm();resetX();render();
 }
