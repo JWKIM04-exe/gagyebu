@@ -222,7 +222,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .hrow .bar{height:10px}.hrow .num{font-size:13px}.hrow .pct{color:var(--sub);font-size:11px;margin-left:4px}
 .days{display:flex;align-items:flex-end;gap:2px;height:110px;border-bottom:1px solid light-dark(#e6e8e7,#1e3a2e);padding-bottom:2px}
 .dbar{flex:1;height:100%;display:flex;align-items:flex-end;background:transparent;border:0;padding:0;cursor:pointer;min-width:0;border-radius:3px}.dbar.sel{background:color-mix(in srgb,var(--em) 18%,transparent)}.dbar.sel i{outline:2px solid var(--ink)}
-.days i{width:100%;display:block;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.days i.today{background:var(--em)}
+.days i{width:100%;display:block;background:var(--pkInk);border-radius:2px 2px 0 0;min-height:1px;opacity:.85}.days i.z{background:light-dark(#e6e8e7,#1e3a2e);opacity:1}.dbar.today{position:relative}.dbar.today::after{content:'';position:absolute;left:50%;bottom:-8px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--ink)}
 .dax{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:3px}
 .mons{display:flex;align-items:flex-end;gap:8px;height:120px}.mons div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;font-size:11px;color:var(--sub)}
 .mons i{width:70%;background:var(--pkInk);border-radius:4px 4px 0 0;min-height:2px;display:block}.mons div.cur i{background:var(--em)}.mons div.cur{color:var(--ink);font-weight:700}
@@ -1332,8 +1332,8 @@ function renderStats(){
     <h3 class="sth">카테고리별 지출 <small>비율</small></h3>
     ${cats.length?cats.map(([c,v])=>`<div class="hrow"><span>${esc(c)}</span><div class="bar"><i style="width:${v/cmax*100}%"></i></div><span class="num">${won(v)}<span class="pct">${pct(v)}%</span></span></div>`).join(''):'<p class="dsub">지출이 없어요</p>'}
     <h3 class="sth">날짜별 지출 <small>가장 많이 쓴 날 ${won(dmax===1&&!exp?0:dmax)}</small></h3>
-    <div class="days">${byDay.map((v,i)=>{const ds=`${key}-${pad(i+1)}`;return `<button type="button" class="dbar${ds===stDay?' sel':''}" data-sday="${ds}" aria-label="${m+1}월 ${i+1}일 지출 ${won(v)}"><i class="${v?'':'z'}${ds===tk?' today':''}" style="height:${v?Math.max(4,v/dmax*100):2}%"></i></button>`}).join('')}</div>
-    <div class="dax"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div>
+    <div class="days">${byDay.map((v,i)=>{const ds=`${key}-${pad(i+1)}`;return `<button type="button" class="dbar${ds===stDay?' sel':''}${ds===tk?' today':''}" data-sday="${ds}" aria-label="${m+1}월 ${i+1}일 지출 ${won(v)}"><i class="${v?'':'z'}" style="height:${v?Math.max(4,v/dmax*100):2}%"></i></button>`}).join('')}</div>
+    <div class="dax" style="margin-top:10px"><span>1일</span><span>${Math.ceil(last/2)}일</span><span>${last}일</span></div>${tk.startsWith(key)?'<p class="dsub" style="margin:2px 0 0;font-size:11px">● 표시는 오늘이에요</p>':''}
     <div id="stDayList">${stDayHtml(key)}</div>
     <h3 class="sth">통장별 지출</h3>
     ${accl.map(([n,v])=>`<div class="hrow"><span>${esc(n)}</span><div class="bar"><i style="width:${v/amax*100}%;background:var(--em)"></i></div><span class="num">${won(v)}</span></div>`).join('')||'<p class="dsub">지출이 없어요</p>'}
