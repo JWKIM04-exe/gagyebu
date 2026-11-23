@@ -202,7 +202,7 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .asbal{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 12px;flex-wrap:wrap}.asbal b{font-size:26px;font-weight:800}
 .aslist{margin-top:10px}.aslist .it{cursor:pointer}
 .aslist .dayh{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin:14px 0 2px}
-.mblock{margin-bottom:10px}.mblock .mrow{margin-bottom:6px}
+.mblock{margin-bottom:10px}.mblock .mrow{margin-bottom:6px}.mblock .mcn{margin-bottom:6px;height:44px}
 .memorow{display:flex;gap:6px;align-items:center}.memorow input[type=text]{flex:1}
 .phbtn{flex:none;height:44px;min-width:56px;justify-content:center;border-radius:10px}
 .rmemo{height:40px;font-size:15px}
@@ -637,9 +637,11 @@ function rowOpts(t,sel){return CATS.e.map(c=>`<option${c===sel?' selected':''}>$
 function renderRows(){
   rowsType=type;rowPhotos=[];lastMemo=null;const first=CATS.e[0];
   $('mRows').innerHTML=[0,1,2].map(i=>`<div class="mblock"><div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,first)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"></div>
+    <input id="mN${i}" class="mcname mcn" type="text" maxlength="12" placeholder="카테고리 이름 직접 적기 (예: 경조사)" aria-label="${i+1}번 칸 카테고리 직접 입력" hidden>
     <div class="memorow"><input id="mM${i}" class="rmemo" type="text" maxlength="40" placeholder="${i+1}번 메모" aria-label="${i+1}번 칸 메모"><label class="pay filelbl phbtn" aria-label="${i+1}번 메모에 사진 첨부">사진<input type="file" id="mP${i}" data-i="${i}" accept="image/*"></label></div>
     <div class="thumbs" id="mT${i}"></div></div>`).join('');
   $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
+  $('mRows').querySelectorAll('.mcsel').forEach((el,i)=>el.addEventListener('change',()=>{const o=el.value==='기타';$('mN'+i).hidden=!o;if(o)$('mN'+i).focus();else $('mN'+i).value=''}));
   $('mRows').querySelectorAll('.rmemo').forEach(el=>{el.addEventListener('focus',()=>{lastMemo=el;memoHint()});el.addEventListener('input',()=>{lastMemo=el;memoHint()})});
   $('mRows').querySelectorAll('input[type=file]').forEach(el=>el.addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const i=Number(el.dataset.i);try{rowPhotos[i]=await shrinkImg(f);renderThumb('mT'+i,rowPhotos[i],i)}catch(err){toast('사진을 불러오지 못했어요',false)}}));
   mSum();
@@ -652,7 +654,7 @@ function amtMode(){
 }
 function mSum(){const t=[...document.querySelectorAll('.mamt')].reduce((s,el)=>s+(money(el.id)||0),0);$('mSum').textContent=t?`합계 ${won(t)}`:''}
 function multiSubmit(){
-  const rows=[...document.querySelectorAll('.mamt')].map((el,i)=>({c:$('mC'+i).value,a:money(el.id),m:$('mM'+i).value.trim(),ph:rowPhotos[i]||null})).filter(r=>r.a>0);
+  const rows=[...document.querySelectorAll('.mamt')].map((el,i)=>({c:$('mC'+i).value==='기타'?($('mN'+i).value.trim()||'기타'):$('mC'+i).value,a:money(el.id),m:$('mM'+i).value.trim(),ph:rowPhotos[i]||null})).filter(r=>r.a>0);
   if(!rows.length){$('fErr').textContent='금액을 한 칸 이상 적어 주세요.';return}
   $('fErr').textContent='';
   const S=sv($('fAcc').value),tp=type,ac=S.ac,m=$('fMemo').value.trim(),d=$('fDate').value,now=Date.now();let r=null;
