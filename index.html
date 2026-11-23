@@ -204,7 +204,8 @@ textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:2px sol
 .aslist .dayh{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin:14px 0 2px}
 .mblock{margin-bottom:10px}.mblock .mrow{margin-bottom:6px}.mblock .mcn{margin-bottom:6px;height:44px}
 .memorow{display:flex;gap:6px;align-items:center}.memorow input[type=text]{flex:1}
-.phbtn{flex:none;height:44px;min-width:56px;justify-content:center;border-radius:10px}
+.phbtn.cam{border-color:var(--emInk);color:var(--emInk);font-weight:600}
+.phbtn{flex:none;height:44px;min-width:50px;padding:0 10px;justify-content:center;border-radius:10px}
 .rmemo{height:40px;font-size:15px}
 .thumbs:empty{display:none}.thumbs{margin-top:6px}
 .thumb{position:relative;display:inline-block}.thumb img{width:72px;height:72px;object-fit:cover;border-radius:10px;display:block;border:2px solid var(--line)}
@@ -336,7 +337,7 @@ header h1{flex:1}
       <div id="fToW" hidden><label for="fTo">입금 통장</label><select id="fTo"></select></div>
       <p class="err" id="fErr" role="alert"></p>
       <div id="singleMemoW"><label for="fMemo">메모</label>
-        <div class="memorow"><input id="fMemo" type="text" maxlength="40" placeholder="예: 점심 김밥"><label class="pay filelbl phbtn" aria-label="메모에 사진 첨부">사진<input type="file" id="fPhPick" accept="image/*"></label></div>
+        <div class="memorow"><input id="fMemo" type="text" maxlength="40" placeholder="예: 점심 김밥"><label class="pay filelbl phbtn cam" aria-label="카메라로 사진 찍어 넣기">촬영<input type="file" id="fCamPick" accept="image/*" capture="environment"></label><label class="pay filelbl phbtn" aria-label="앨범 사진 넣기">앨범<input type="file" id="fPhPick" accept="image/*"></label></div>
         <div class="thumbs" id="fThumb"></div></div>
       <div class="qm" id="qm"></div>
       <p class="mhint" id="mHint"></p>
@@ -626,7 +627,7 @@ const PDB={db:null,
 function shrinkImg(f,max=1000,q=0.72){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q))};img.src=r.result};r.readAsDataURL(f)})}
 function renderThumb(id,src,i){const el=$(id);if(!el)return;el.innerHTML=src?`<span class="thumb"><img src="${src}" alt="첨부한 사진"><button type="button" data-rmph="${i==null?'s':i}" aria-label="사진 빼기">×</button></span>`:''}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-rmph]');if(!b)return;const k=b.dataset.rmph;if(k==='s'){singlePhoto=null;renderThumb('fThumb',null)}else{rowPhotos[Number(k)]=null;renderThumb('mT'+k,null)}});
-$('fPhPick').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{singlePhoto=await shrinkImg(f);renderThumb('fThumb',singlePhoto)}catch(err){toast('사진을 불러오지 못했어요',false)}});
+['fPhPick','fCamPick'].forEach(id=>$(id).addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{singlePhoto=await shrinkImg(f);renderThumb('fThumb',singlePhoto)}catch(err){toast('사진을 불러오지 못했어요',false)}}));
 // ---- 지출·수입: 3칸 한 번에 입력 ----
 let forceSingle=false,rowsType=null;
 const RKEY='gagyebu.rows.v1',ROWS_DEF={e:['식비','교통','저축'],i:['급여','용돈','부수입']};
@@ -638,7 +639,7 @@ function renderRows(){
   rowsType=type;rowPhotos=[];lastMemo=null;const first=CATS.e[0];
   $('mRows').innerHTML=[0,1,2].map(i=>`<div class="mblock"><div class="mrow"><select id="mC${i}" class="mcsel" aria-label="${i+1}번 칸 카테고리">${rowOpts(type,first)}</select><input id="mA${i}" class="money mamt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${i+1}번 칸 금액"></div>
     <input id="mN${i}" class="mcname mcn" type="text" maxlength="12" placeholder="카테고리 이름 직접 적기 (예: 경조사)" aria-label="${i+1}번 칸 카테고리 직접 입력" hidden>
-    <div class="memorow"><input id="mM${i}" class="rmemo" type="text" maxlength="40" placeholder="${i+1}번 메모" aria-label="${i+1}번 칸 메모"><label class="pay filelbl phbtn" aria-label="${i+1}번 메모에 사진 첨부">사진<input type="file" id="mP${i}" data-i="${i}" accept="image/*"></label></div>
+    <div class="memorow"><input id="mM${i}" class="rmemo" type="text" maxlength="40" placeholder="${i+1}번 메모" aria-label="${i+1}번 칸 메모"><label class="pay filelbl phbtn cam" aria-label="${i+1}번 메모에 카메라로 사진 찍어 넣기">촬영<input type="file" id="mP${i}" data-i="${i}" accept="image/*" capture="environment"></label><label class="pay filelbl phbtn" aria-label="${i+1}번 메모에 앨범 사진 넣기">앨범<input type="file" data-i="${i}" accept="image/*"></label></div>
     <div class="thumbs" id="mT${i}"></div></div>`).join('');
   $('mRows').querySelectorAll('.mamt').forEach(el=>el.addEventListener('input',()=>{fmtMoneyEl(el);mSum()}));
   $('mRows').querySelectorAll('.mcsel').forEach((el,i)=>el.addEventListener('change',()=>{const o=el.value==='기타';$('mN'+i).hidden=!o;if(o)$('mN'+i).focus();else $('mN'+i).value=''}));
