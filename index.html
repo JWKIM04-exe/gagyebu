@@ -91,6 +91,9 @@ input,select{width:100%;height:44px;padding:0 12px;border:2px solid light-dark(#
 .ac .u{font-size:12px;color:var(--sub);display:block;margin-top:4px}
 .ac .m{font-size:13px;display:block;margin-top:6px;background:light-dark(#f6f7f6,#102a1f);padding:4px 8px;border-radius:6px}
 .ac .x{position:absolute;top:4px;right:4px}
+.ac [data-ef]{cursor:text;border-radius:6px;transition:background .15s}.ac [data-ef]:not(.editing):hover{background:color-mix(in srgb,var(--em) 12%,transparent)}
+.ac .madd{color:var(--sub);background:transparent;border:1px dashed light-dark(#c9cecb,#2f4a3d)}
+.ac .editing{background:transparent}.efin{height:40px;margin:2px 0;font-size:16px}.ac .v.editing .efin{font-size:20px;font-weight:800}.pays .editing{flex-basis:100%;display:grid;gap:2px}
 .ac.add{display:grid;place-items:center;border-style:dashed;color:var(--sub);font-weight:600;min-height:110px}
 .aform{display:none;margin-top:14px;padding-top:14px;border-top:2px solid var(--line)}
 .aform.open{display:block}
@@ -365,6 +368,7 @@ header h1{flex:1}
       <h2>내 계좌 <button type="button" class="pay" id="aSort" aria-pressed="false">순서 바꾸기</button></h2>
       <div class="tot"><small>총 잔액</small><span class="num" id="aTot">0원</span></div>
     </div>
+    <p class="dsub" style="margin:-4px 0 10px">이름·잔액·페이·메모를 누르면 바로 고칠 수 있어요. 카드의 빈 곳을 누르면 그 통장 내역·달력이 열려요.</p>
     <div class="acards" id="aList"></div>
     <form class="aform" id="aform" autocomplete="off">
       <h2 id="aTitle">계좌 추가</h2>
@@ -575,13 +579,33 @@ function fillAccSel(){
   $('aflt').value=accs.some(a=>String(a.id)===g)?g:'';
 }
 
+// ---- 계좌 카드에서 바로 고치기 ----
+function startEdit(id,el){
+  const a=accs.find(v=>v.id===id);if(!a)return;const f=el.dataset.ef;
+  let val,isMoney=false,pi=-1;
+  if(f==='n')val=a.n;else if(f==='m')val=a.m||'';else if(f==='b'){val=a.b;isMoney=true}else{pi=Number(f.slice(1));val=Number(a.pays[pi].b)||0;isMoney=true}
+  el.classList.add('editing');
+  el.innerHTML=(pi>=0?`<span class="dsub">${esc(a.pays[pi].n)}</span>`:'')+`<input id="efIn" class="efin${isMoney?' money':''}" type="text"${isMoney?' inputmode="numeric" data-neg="1"':` maxlength="${f==='n'?30:40}"`} aria-label="고칠 내용">`;
+  const inp=$('efIn');if(isMoney)setMoney('efIn',val);else inp.value=val;
+  if(isMoney)inp.addEventListener('input',()=>fmtMoneyEl(inp));
+  let done=false;
+  const commit=ok=>{if(done)return;done=true;let changed=false;
+    if(ok){if(f==='n'){const v=inp.value.trim();if(v&&v!==a.n){a.n=v;changed=true}}
+      else if(f==='m'){const v=inp.value.trim();if(v!==(a.m||'')){a.m=v;changed=true}}
+      else{const v=money('efIn');if(Number.isFinite(v)){const cur=pi>=0?Number(a.pays[pi].b)||0:a.b;if(v!==cur){if(pi>=0)a.pays[pi].b=v;else a.b=v;a.u=ymd(new Date());changed=true}}}}
+    if(changed)saveA();renderAccs();render();if(changed)toast('고쳤어요',false)};
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit(true)}else if(e.key==='Escape'){e.preventDefault();commit(false)}});
+  inp.addEventListener('blur',()=>commit(true));
+  inp.addEventListener('click',e=>e.stopPropagation());
+  inp.focus();try{inp.select()}catch(e){}
+}
 function renderAccs(){
   const totAll=accs.reduce((s,a)=>s+a.b+paySum(a),0);$('aTot').textContent=(totAll<0?'−':'')+won(Math.abs(totAll));
   $('aSort').setAttribute('aria-pressed',sortMode);$('aSort').textContent=sortMode?'완료':'순서 바꾸기';
   $('aList').innerHTML=accs.map((a,i)=>{
     const [y,mo,d]=a.u.split('-').map(Number);
     const mv=sortMode?`<div class="mv"><button type="button" data-mv="${a.id}:-1" ${i===0?'disabled':''} aria-label="${esc(a.n)} 위로">▲ 위로</button><button type="button" data-mv="${a.id}:1" ${i===accs.length-1?'disabled':''} aria-label="${esc(a.n)} 아래로">▼ 아래로</button></div>`:`<button class="x" data-adel="${a.id}" aria-label="${esc(a.n)} 삭제">×</button>`;
-    return `<div class="ac${sortMode?' sorting':''}" ${sortMode?'':'role="button" tabindex="0"'} data-acc="${a.id}"><span class="k">${sortMode?`${i+1}번 · `:''}${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n">${esc(a.n)}</span><span class="v num">${a.b<0?'−':''}${won(Math.abs(a.b))}</span>${sortMode?'':`<span class="u">${y}.${mo}.${d} 기준</span>${paySum(a)?`<span class="pays">${a.pays.filter(p=>p.b).map(p=>`<span>${esc(p.n)} <b class="num">${won(p.b)}</b></span>`).join('')}</span>`:''}${a.m?`<span class="m">${esc(a.m)}</span>`:''}`}${mv}</div>`;
+    return `<div class="ac${sortMode?' sorting':''}" ${sortMode?'':'role="button" tabindex="0"'} data-acc="${a.id}"><span class="k">${sortMode?`${i+1}번 · `:''}${esc(a.k)}${defAcc()===a?' · <b style="color:var(--emInk)">기본</b>':''}</span><span class="n"${sortMode?'':' data-ef="n"'}>${esc(a.n)}</span><span class="v num"${sortMode?'':' data-ef="b"'}>${a.b<0?'−':''}${won(Math.abs(a.b))}</span>${sortMode?'':`<span class="u">${y}.${mo}.${d} 기준</span>${(a.pays||[]).some(p=>p.n)?`<span class="pays">${a.pays.map((p,pi)=>p.n?`<span data-ef="p${pi}">${esc(p.n)} <b class="num">${won(Number(p.b)||0)}</b></span>`:'').join('')}</span>`:''}${a.m?`<span class="m" data-ef="m">${esc(a.m)}</span>`:`<span class="m madd" data-ef="m">+ 메모 추가</span>`}`}${mv}</div>`;
   }).join('')+(sortMode?'':`<button class="ac add" type="button" id="aAdd">+ 계좌 추가</button>`);
   fillAccSel();
 }
@@ -818,6 +842,7 @@ const accClick=e=>{
     const id=Number(del.dataset.adel);lastDel={k:'a',v:accs.find(a=>a.id===id)};
     accs=accs.filter(a=>a.id!==id);saveA();if(aEdit===id)closeA();renderAccs();toast('계좌를 삭제했어요');return;
   }
+  const ef=e.target.closest('[data-ef]');if(ef){if(!ef.classList.contains('editing'))startEdit(Number(ef.closest('[data-acc]').dataset.acc),ef);return}
   const c=e.target.closest('[data-acc]');if(c)openAccSheet(Number(c.dataset.acc));
 };
 $('aList').addEventListener('click',accClick);
